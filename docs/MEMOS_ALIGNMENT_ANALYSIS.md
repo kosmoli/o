@@ -6,9 +6,17 @@
 
 ---
 
-## 🎯 Core Realization
+## 🎯 Core Strategic Insight
 
-**Project O should replicate memos agent functionality**, not just be a generic self-evolving agent. The previous architecture (Phase 0 & 1) provides the **foundation**, but now we need to build the **actual agent capabilities** that memos provides.
+**Project O is a self-evolving agent that leverages memos' memory architecture to achieve true stateful evolution**.
+
+**Why memos?**
+1. **Stateful Memory**: memos' memory blocks enable the agent to remember what it has done and reflect on its actions
+2. **Sleep-time Compute**: The agent can autonomously think and evolve without human intervention
+3. **Active Memory Management**: Core memory operations allow the agent to actively manage its own knowledge
+4. **Practical Foundation**: By implementing memos functionality, we provide a useful agent platform while building the infrastructure for self-evolution
+
+**This is NOT a pivot from self-evolution to memos compatibility**. Rather, memos provides the **memory substrate** that makes true self-evolution possible. The previous architecture (Phase 0 & 1) provides the **fault tolerance foundation**, and memos provides the **cognitive foundation**.
 
 ---
 
@@ -16,17 +24,23 @@
 
 ### What Memos Does (Must Replicate)
 
-#### 1. **Stateful AI Agent with Memory** ✅ (Partially done in Phase 1)
-- **Core Memory**: Editable memory blocks (persona, human, custom)
-- **Archival Memory**: Long-term storage with semantic search
-- **Recall Memory**: Conversation history
-- **Memory Blocks**: Structured memory with read-only protection
+#### 1. **Stateful AI Agent with Memory** ✅ (Partially done in Phase 1) 🔥 **Critical for Self-Evolution**
+- **Core Memory**: Editable memory blocks (persona, human, custom) - **Agent can reflect on itself**
+- **Archival Memory**: Long-term storage with semantic search - **Agent remembers its evolution history**
+- **Recall Memory**: Conversation history - **Agent learns from past interactions**
+- **Memory Blocks**: Structured memory with read-only protection - **Agent maintains stable identity**
+
+**Why This Matters for Self-Evolution**:
+- Agent can remember what code changes it made
+- Agent can reflect on whether changes improved performance
+- Agent can learn from failed evolution attempts
+- Agent maintains continuity across evolution cycles
 
 **Status in Project O**:
 - ✅ Basic memory system (short-term, long-term, episodic, semantic)
-- ❌ Missing: Memory blocks with read-only protection
-- ❌ Missing: Archival memory with semantic search
-- ❌ Missing: Structured persona/human memory
+- ❌ Missing: Memory blocks with read-only protection (needed for stable identity)
+- ❌ Missing: Archival memory with semantic search (needed for evolution history)
+- ❌ Missing: Structured persona/human memory (needed for self-reflection)
 
 #### 2. **Multi-Provider LLM Support** ❌ (Not implemented)
 - OpenAI, Anthropic, Azure, Groq, Ollama, Mistral, DeepSeek, Google Vertex, etc.
@@ -479,51 +493,76 @@
 
 ---
 
-## 💡 Key Insights
+## 💡 Key Strategic Insights
 
-### 1. Gerbil Can Do More Than Expected
+### 1. Self-Evolution Requires Stateful Memory
+**Why memos memory model is perfect for self-evolution**:
+- **Core Memory Blocks**: Agent maintains stable identity while evolving
+- **Archival Memory**: Agent remembers all evolution attempts and outcomes
+- **Active Memory Management**: Agent can modify its own memory (self-reflection)
+- **Sleep-time Compute**: Agent can autonomously plan and execute evolution
+
+### 2. Sleep-time Compute is the Key Innovation
+**What makes this revolutionary**:
+- Agent doesn't wait for user input to evolve
+- Agent can run experiments during idle time
+- Agent can reflect on its performance autonomously
+- Agent can plan multi-step evolution strategies
+
+**Implementation Priority**:
+- 🔥 **Phase 4**: Implement sleep-time compute infrastructure
+- 🔥 **Phase 5**: Enable autonomous evolution triggers
+- 🔥 **Phase 6**: Full self-evolution with reflection
+
+### 3. Memos Provides the Cognitive Foundation
+- **Not the goal**: Build another memos clone
+- **The goal**: Use memos' memory architecture for self-evolution
+- **Benefit**: We get a useful agent platform as a side effect
+- **Strategy**: Implement memos features → Enable self-evolution
+
+### 4. Gerbil Can Do More Than Expected
 - HTTP client: ✅ Available
 - JSON processing: ✅ Available
 - String manipulation: ✅ Available
 - FFI for C libraries: ✅ Available
+- **Perfect for**: Implementing both memos features AND self-evolution logic
 
-### 2. Zig/Rust Less Critical
-- Only needed for: Vector operations, embeddings
-- Most functionality: Can be done in Gerbil
-- Performance: Gerbil is fast enough for most tasks
-
-### 3. Leverage Existing Elixir
+### 5. Leverage Existing Elixir
 - Database operations: Use Elixir
-- Fault tolerance: Already done
-- Supervision: Already done
-
-### 4. Focus on Memos Parity
-- Goal: Replicate memos functionality
-- Not: Generic self-evolution (that's Phase 6+)
-- Priority: Working agent with memory and tools
+- Fault tolerance: Already done (critical for safe evolution)
+- Supervision: Already done (enables shadow testing)
+- **Shadow Testing**: Already implemented for safe evolution experiments
 
 ---
 
 ## 🎊 Conclusion
 
-**Project O needs to pivot from "generic self-evolving agent" to "memos-compatible agent in Gerbil Scheme".**
+**Project O is a self-evolving agent that uses memos' memory architecture as its cognitive foundation.**
 
-**Key Changes**:
-1. ✅ Keep Phase 0 & 1 (foundation is solid)
-2. 🔄 Rewrite Phase 2-5 (focus on memos functionality)
-3. 🔥 Prioritize Gerbil over Zig/Rust
-4. 🎯 Target memos feature parity
+**Strategic Clarity**:
+1. 🎯 **Primary Goal**: Self-evolving agent (unchanged!)
+2. 🧠 **Key Innovation**: Stateful evolution via memos memory model
+3. 💤 **Critical Feature**: Sleep-time compute for autonomous evolution
+4. 🔄 **Implementation Path**: Build memos features → Enable self-evolution
+
+**Why This Approach Works**:
+- ✅ Memos memory = Agent can remember and reflect
+- ✅ Sleep-time compute = Agent can evolve autonomously
+- ✅ Core memory operations = Agent can modify its own knowledge
+- ✅ Archival memory = Agent learns from evolution history
+- ✅ Phase 0 shadow testing = Safe evolution experiments
+- ✅ Phase 1 agent core = Evolution execution framework
 
 **Timeline**:
-- **Weeks 1-4**: LLM clients + HTTP server
-- **Weeks 5-8**: Database + Message system
-- **Weeks 9-12**: Advanced memory
-- **Weeks 13-16**: Tool system
-- **Weeks 17-20**: Execution loop
+- **Weeks 1-4**: LLM clients + HTTP server (foundation)
+- **Weeks 5-8**: Database + Message system (infrastructure)
+- **Weeks 9-12**: Advanced memory + **Sleep-time compute** 🔥
+- **Weeks 13-16**: Tool system + **Evolution tools** 🔥
+- **Weeks 17-20**: Execution loop + **Autonomous evolution** 🔥
 
 **Estimated Completion**: 20 weeks (~5 months)
 
-**Confidence**: ⭐⭐⭐⭐⭐ (5/5) - Clear path forward with available resources
+**Confidence**: ⭐⭐⭐⭐⭐ (5/5) - Clear path to self-evolving agent with stateful memory
 
 ---
 

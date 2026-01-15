@@ -8,12 +8,25 @@
 
 ## 🎯 Vision
 
-**Build a stateful AI agent platform in Gerbil Scheme that replicates memos functionality**, with:
+**Build a self-evolving AI agent that uses memos' memory architecture to achieve true stateful evolution**, with:
+
+### Primary Goal: Self-Evolution
+- **Autonomous Evolution**: Agent can modify its own code during sleep-time compute
+- **Stateful Memory**: Agent remembers evolution history and reflects on changes
+- **Safe Experimentation**: Shadow testing via Elixir supervision (Phase 0)
+- **Evolution Tools**: Self-modification, performance analysis, rollback capabilities
+
+### Cognitive Foundation: Memos Memory Model
+- **Core Memory Blocks**: Stable identity with editable persona/human memory
+- **Archival Memory**: Long-term storage for evolution history and learnings
+- **Sleep-time Compute**: Autonomous thinking and evolution without human intervention
+- **Active Memory Management**: Agent can modify its own knowledge base
+
+### Infrastructure: Practical Agent Platform
 - Multiple LLM provider support (OpenAI, Anthropic, Groq, Ollama, etc.)
-- Structured memory system (core, archival, recall)
-- Custom tool execution
+- Custom tool execution with sandbox
 - REST API for agent management
-- PostgreSQL persistence
+- PostgreSQL persistence with pgvector
 - Fault tolerance via Elixir supervision
 
 ---

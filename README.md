@@ -1,14 +1,26 @@
-# O - Stateful AI Agent Platform in Gerbil Scheme
+# O - Self-Evolving AI Agent with Stateful Memory
 
-**Project O** is a **memos-compatible AI agent platform** built in Gerbil Scheme with Elixir/OTP supervision. It provides stateful agents with long-term memory, multi-provider LLM support, and custom tool execution.
+**Project O** is a **self-evolving AI agent** that uses memos' memory architecture to achieve true stateful evolution. Built in Gerbil Scheme with Elixir/OTP supervision, it can autonomously improve itself while maintaining memory of its evolution history.
 
-**Based on**: [memos](https://github.com/cpacker/memos) (Letta fork with unified provider system)
+**Core Innovation**: Leverages [memos](https://github.com/cpacker/memos)' memory model and sleep-time compute for autonomous self-evolution.
 
 ---
 
 ## 🎯 Key Features
 
-- **Stateful Memory**: Core memory blocks, archival memory, conversation history
+### Self-Evolution Capabilities
+- **Autonomous Evolution**: Agent can modify its own code during sleep-time compute
+- **Stateful Memory**: Remembers evolution history and reflects on changes
+- **Shadow Testing**: Safe evolution experiments via Elixir supervision
+- **Evolution Tools**: Self-modification, performance analysis, rollback
+
+### Memos-Inspired Memory System
+- **Core Memory Blocks**: Stable identity with editable persona/human memory
+- **Archival Memory**: Long-term storage with semantic search for evolution history
+- **Sleep-time Compute**: Autonomous thinking and evolution without human intervention
+- **Active Memory Management**: Agent can modify its own knowledge base
+
+### Infrastructure
 - **Multi-Provider LLM**: OpenAI, Anthropic, Groq, Ollama, and more
 - **Custom Tools**: User-defined functions with sandbox execution
 - **Fault Tolerance**: Automatic crash recovery via Elixir/OTP supervision
@@ -337,25 +349,32 @@ Contributions are welcome! Please read our contributing guidelines before submit
 
 ## 🎉 Recent Updates
 
-### 🔥 Project Realignment (2026-01-16)
+### 🔥 Strategic Clarification (2026-01-16)
 
-**Major Update**: Project O is now aligned with [memos](https://github.com/cpacker/memos) functionality!
+**Core Insight**: Project O leverages memos' memory architecture to enable **true self-evolution**!
 
-**Key Changes**:
-- 🎯 **Goal**: Build memos-compatible agent in Gerbil Scheme
-- 🔧 **Strategy**: Gerbil-first (HTTP, LLM clients, database in Gerbil)
-- 📋 **Roadmap**: New 20-week plan with weekly milestones
-- 📚 **Resources**: Leveraging gerbil_scheme_book examples
+**Why memos?**
+- 🧠 **Stateful Memory**: Agent remembers its evolution history and can reflect
+- 💤 **Sleep-time Compute**: Agent can autonomously evolve without human intervention
+- 🔄 **Active Memory Management**: Agent can modify its own knowledge base
+- 📚 **Archival Memory**: Agent learns from past evolution attempts
+
+**Strategic Approach**:
+- 🎯 **Primary Goal**: Self-evolving agent (unchanged!)
+- 🧠 **Key Innovation**: Use memos memory model for stateful evolution
+- 🔧 **Implementation**: Gerbil-first (HTTP, LLM clients, database in Gerbil)
+- 📋 **Roadmap**: 20-week plan with evolution features in Phases 4-6
 
 **What This Means**:
-- ✅ Phase 0 & 1 work remains valid (solid foundation)
-- 🔄 Phase 2+ refocused on memos functionality
-- 🚀 Prioritizing practical agent features over generic evolution
-- 📖 Clear path forward with available Gerbil examples
+- ✅ Phase 0 & 1: Fault tolerance foundation (enables safe evolution)
+- ✅ Phase 2-3: Memos infrastructure (memory, tools, API)
+- 🔥 Phase 4: Sleep-time compute (autonomous thinking)
+- 🔥 Phase 5: Evolution tools (self-modification capabilities)
+- 🔥 Phase 6: Full self-evolution (autonomous improvement)
 
 See:
-- **[Memos Alignment Analysis](docs/MEMOS_ALIGNMENT_ANALYSIS.md)** - Detailed analysis
-- **[Revised Roadmap](docs/REVISED_ROADMAP.md)** - 20-week implementation plan
+- **[Memos Alignment Analysis](docs/MEMOS_ALIGNMENT_ANALYSIS.md)** - Why memos enables self-evolution
+- **[Revised Roadmap](docs/REVISED_ROADMAP.md)** - 20-week path to self-evolution
 
 ### Phase 1 Complete! (2026-01-16)
 
