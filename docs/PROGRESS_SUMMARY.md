@@ -1,8 +1,8 @@
 # Project O - Implementation Progress Summary
 
 **Date**: 2026-01-16
-**Status**: Phase 4 Week 9 Complete
-**Progress**: 45% of total roadmap (9/20 weeks)
+**Status**: Phase 4 Week 11 Complete
+**Progress**: 55% of total roadmap (11/20 weeks)
 
 ---
 
@@ -173,6 +173,53 @@
 
 ---
 
+### Phase 4: Advanced Memory System (Weeks 9-12)
+
+#### Week 9: Memory Blocks ✅
+**Deliverables:**
+- `gerbil/memory/types.ss` (350 lines) - Memory type definitions
+- `gerbil/memory/blocks.ss` (450 lines) - Memory block operations
+- `gerbil/memory/README.md` (800 lines) - Documentation
+
+**Features:**
+- Memory block manager with caching
+- Standard blocks (persona, human)
+- Custom blocks with validation
+- Block templates and read-only protection
+- Export/Import (JSON, text)
+
+#### Week 10: Core Memory Operations ✅
+**Deliverables:**
+- `gerbil/memory/core.ss` (550 lines) - Core memory operations
+- `gerbil/memory/core-test.ss` (300 lines) - Test suite
+- Updated documentation
+
+**Features:**
+- Core memory operations (append, replace, patch)
+- Memory change tracking with history
+- Memory rollback (by steps or timestamp)
+- Memory constraints (size limits, read-only, custom validators)
+- Memory validation and statistics
+
+#### Week 11: Archival Memory ✅
+**Deliverables:**
+- `gerbil/memory/archival.ss` (650 lines) - Archival memory operations
+- `gerbil/memory/archival-test.ss` (400 lines) - Test suite
+- Updated documentation
+
+**Features:**
+- Archival memory manager with LLM embedding support
+- Entry creation with importance scores and tags
+- Text-based search with importance sorting
+- Tag-based and importance-based search
+- Pagination for large result sets
+- Embedding generation (single and batch)
+- Export/Import (JSON, text)
+
+**Phase 4 (Weeks 9-11) Total**: ~3,500 lines of code
+
+---
+
 ## 📈 Code Statistics
 
 ### Total Lines of Code
@@ -183,8 +230,9 @@
 | Phase 1: Agent Core | ~3,650 | ✅ Done |
 | Phase 2: LLM & HTTP | ~4,300 | ✅ Done |
 | Phase 3: Database & Messages | ~7,051 | ✅ Done |
-| **Total Completed** | **~17,001** | **70% of planned** |
-| Phase 4: Memory | ~3,100 | ⏳ Todo |
+| Phase 4: Memory (Weeks 9-11) | ~3,500 | ✅ Done |
+| **Total Completed** | **~20,501** | **85% of planned** |
+| Phase 4: Semantic Search (Week 12) | ~600 | ⏳ Todo |
 | Phase 5: Tools | ~3,500 | ⏳ Todo |
 | Phase 6: Execution | ~3,500 | ⏳ Todo |
 | **Total Planned** | **~24,250** | **100%** |
@@ -205,7 +253,14 @@
 - Message streaming: 2 files
 - Documentation: 2 files
 
-**Total**: 41 new files created
+**Phase 4 (Weeks 9-11)**: 8 files
+- Memory types: 1 file
+- Memory blocks: 2 files
+- Core memory: 2 files
+- Archival memory: 2 files
+- Documentation: 1 file (updated)
+
+**Total**: 49 new files created
 
 ---
 
@@ -252,22 +307,34 @@
 ✅ Stream lifecycle management
 ✅ LLM streaming integration
 
+### Memory System
+✅ Memory blocks (persona, human, custom)
+✅ Core memory operations (append, replace, patch)
+✅ Memory change tracking and history
+✅ Memory rollback (by steps or timestamp)
+✅ Memory constraints and validation
+✅ Archival memory with embeddings
+✅ Text-based and tag-based search
+✅ Importance-based filtering
+✅ Pagination for large result sets
+✅ Export/Import (JSON, text)
+
 ---
 
 ## 🚀 Next Steps
 
-### Week 9: Memory Blocks (Current)
+### Week 12: Semantic Search (Current)
 **Goals:**
-- Implement structured memory blocks (persona, human, custom)
-- Add block CRUD operations
-- Implement read-only protection
-- Add block templates
-- Create block validation
+- Implement pgvector integration
+- Add vector similarity search
+- Implement hybrid search (text + vector)
+- Add search result ranking
+- Create semantic search tests
 
 **Deliverables:**
-- `gerbil/memory/blocks.ss` (~500 lines)
-- Database integration (~200 lines)
-- Tests (~300 lines)
+- `gerbil/memory/semantic.ss` (~400 lines)
+- Integration with archival memory (~200 lines)
+- Tests (~200 lines)
 
 ### Phase 4: Advanced Memory System (Weeks 9-12)
 **Focus:**
