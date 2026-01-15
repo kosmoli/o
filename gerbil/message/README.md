@@ -12,6 +12,7 @@ The message manager provides:
 - **Message Validation** - Validate message parameters and conversation consistency
 - **Statistics** - Track message counts, tokens, and distribution
 - **Export/Import** - Export conversations to JSON/text formats
+- **Streaming** - Server-Sent Events (SSE) for real-time streaming (see [STREAMING.md](STREAMING.md))
 
 ## Architecture
 
