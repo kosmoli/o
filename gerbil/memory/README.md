@@ -7,6 +7,9 @@ Advanced memory management system for Project O, implementing memos-compatible m
 The memory system provides:
 - **Memory Blocks** - Structured memory blocks (persona, human, custom)
 - **Core Memory** - Stable identity with editable blocks
+- **Core Memory Operations** - Append, replace, patch operations with history tracking
+- **Memory Rollback** - Undo changes and restore previous states
+- **Memory Constraints** - Validation rules and size limits
 - **Archival Memory** - Long-term storage with semantic search
 - **Recall Memory** - Short-term context management
 - **Memory Validation** - Validate memory parameters and consistency
@@ -17,6 +20,8 @@ The memory system provides:
 
 ```
 Application
+    ↓
+memory/core.ss (Core memory operations with history)
     ↓
 memory/blocks.ss (High-level block operations)
     ↓
@@ -173,6 +178,195 @@ No installation required - part of Project O's Gerbil codebase.
 (displayln (format "Blocks: ~a" labels))
 ```
 
+### Core Memory Operations
+
+#### Creating a Core Memory Manager
+
+```scheme
+(import :gerbil/memory/core
+        :gerbil/database/client)
+
+;; Connect to database
+(db-connect!)
+
+;; Create core memory manager with history tracking
+(def core-manager (make-core-memory-manager agent-id
+                                            cache-enabled: #t
+                                            max-history: 100))
+
+;; Initialize core memory
+(core-memory-initialize! (core-memory-manager-block-manager core-manager)
+                        persona: "You are a helpful AI assistant."
+                        human: "User prefers concise responses.")
+```
+
+#### Core Memory Append
+
+```scheme
+;; Append to persona block
+(core-memory-append! core-manager "persona"
+                    "I am knowledgeable about AI and machine learning.")
+
+;; Append with custom separator
+(core-memory-append! core-manager "human"
+                    "User is a software engineer."
+                    separator: " | ")
+
+;; Append to empty block (no separator added)
+(core-memory-clear-block! core-manager "persona")
+(core-memory-append! core-manager "persona" "New content.")
+```
+
+#### Core Memory Replace
+
+```scheme
+;; Replace text in block
+(core-memory-replace! core-manager "persona"
+                     "helpful" "very helpful")
+
+;; Case-insensitive replace
+(core-memory-replace! core-manager "persona"
+                     "AI" "artificial intelligence"
+                     case-sensitive?: #f)
+
+;; Replace records history automatically
+(def history (core-memory-manager-history core-manager))
+(def changes (history-get-changes history limit: 5))
+```
+
+#### Memory Patch Operations
+
+```scheme
+;; Apply single append patch
+(memory-apply-patch! core-manager "persona"
+                    (hash 'op "append" 'value "I am helpful."))
+
+;; Apply replace patch
+(memory-apply-patch! core-manager "persona"
+                    (hash 'op "replace"
+                          'old "helpful"
+                          'new "very helpful"))
+
+;; Set block value directly
+(memory-apply-patch! core-manager "persona"
+                    (hash 'op "set" 'value "New persona content."))
+
+;; Clear block
+(memory-apply-patch! core-manager "persona"
+                    (hash 'op "clear"))
+
+;; Prepend to block
+(memory-apply-patch! core-manager "persona"
+                    (hash 'op "prepend" 'value "Prefix: "))
+
+;; Apply multiple patches sequentially
+(memory-apply-patch! core-manager "human"
+                    (list (hash 'op "append" 'value "User is a developer.")
+                          (hash 'op "append" 'value "User prefers technical details.")))
+```
+
+#### Memory Rollback
+
+```scheme
+;; Rollback single change
+(core-memory-append! core-manager "persona" "Temporary change.")
+(memory-rollback! core-manager "persona" steps: 1)
+
+;; Rollback multiple changes
+(core-memory-append! core-manager "persona" "Change 1.")
+(core-memory-append! core-manager "persona" "Change 2.")
+(core-memory-append! core-manager "persona" "Change 3.")
+(memory-rollback! core-manager "persona" steps: 3)
+
+;; Rollback to specific timestamp
+(def checkpoint-time (current-seconds))
+(core-memory-append! core-manager "persona" "After checkpoint.")
+(memory-rollback-to-timestamp! core-manager "persona" checkpoint-time)
+```
+
+#### Memory Constraints
+
+```scheme
+;; Create custom constraints
+(def constraints (make-memory-constraints
+                  max-block-size: 5000
+                  min-block-size: 10
+                  readonly-blocks: '("persona")
+                  required-blocks: '("persona" "human")
+                  custom-validators: (list my-validator)))
+
+;; Create manager with constraints
+(def core-manager (make-core-memory-manager agent-id
+                                            constraints: constraints))
+
+;; Constraints are validated automatically
+(try
+ (core-memory-append! core-manager "persona" (make-string 10000 #\a))
+ (catch (e)
+   (displayln "Constraint violation: Block too large")))
+
+;; Custom validator example
+(def no-profanity-validator
+  (lambda (label value)
+    (if (string-contains value "badword")
+        (cons #f (list "Profanity not allowed"))
+        (cons #t #f))))
+```
+
+#### Memory Validation
+
+```scheme
+;; Validate entire core memory
+(def result (validate-core-memory core-manager))
+(if (car result)
+    (displayln "Core memory is valid")
+    (displayln (format "Validation errors: ~a" (cdr result))))
+
+;; Check required blocks exist
+;; Check block size constraints
+;; Run custom validators
+```
+
+#### Memory History
+
+```scheme
+;; Get recent changes
+(def history (core-memory-manager-history core-manager))
+(def recent-changes (history-get-changes history limit: 10))
+
+(for-each
+ (lambda (change)
+   (displayln (format "~a: ~a on ~a"
+                     (memory-change-timestamp change)
+                     (memory-change-operation change)
+                     (memory-change-block-label change))))
+ recent-changes)
+
+;; Get changes for specific block
+(def persona-changes (history-get-changes-for-block history "persona"))
+
+;; Each change includes:
+;; - timestamp: When the change occurred
+;; - operation: append, replace, patch, rollback
+;; - block-label: Which block was changed
+;; - old-value: Previous value
+;; - new-value: New value
+;; - metadata: Additional operation-specific data
+```
+
+#### Convenience Functions
+
+```scheme
+;; Set block value directly
+(core-memory-set-block! core-manager "persona" "New content.")
+
+;; Clear block
+(core-memory-clear-block! core-manager "persona")
+
+;; Prepend to block
+(core-memory-prepend! core-manager "persona" "Prefix: " separator: " ")
+```
+
 ### Searching Memory Blocks
 
 ```scheme
@@ -271,6 +465,55 @@ No installation required - part of Project O's Gerbil codebase.
 
 ## API Reference
 
+### Core Memory Manager
+
+#### Constructor
+
+- `(make-core-memory-manager agent-id #!key ...)` - Create core memory manager
+  - `cache-enabled` - Enable block caching (default: #t)
+  - `max-history` - Maximum history size (default: 100)
+  - `constraints` - Memory constraints (default: default-constraints)
+
+#### Core Memory Operations
+
+- `(core-memory-append! manager block-label text #!key ...)` - Append text to block
+  - `separator` - Separator between old and new text (default: "\n")
+  - `validate?` - Validate constraints (default: #t)
+
+- `(core-memory-replace! manager block-label old-text new-text #!key ...)` - Replace text
+  - `validate?` - Validate constraints (default: #t)
+  - `case-sensitive?` - Case-sensitive search (default: #t)
+
+- `(memory-apply-patch! manager block-label patch #!key ...)` - Apply JSON patch
+  - `validate?` - Validate constraints (default: #t)
+  - Patch operations: append, prepend, replace, set, clear
+
+#### Memory Rollback
+
+- `(memory-rollback! manager block-label #!key (steps 1))` - Rollback N changes
+- `(memory-rollback-to-timestamp! manager block-label timestamp)` - Rollback to timestamp
+
+#### Memory Validation
+
+- `(validate-core-memory manager)` - Validate entire core memory
+- `(validate-constraints manager block-label new-value)` - Validate constraints
+
+#### Memory History
+
+- `(history-get-changes history #!key (limit 10))` - Get recent changes
+- `(history-get-changes-for-block history block-label)` - Get changes for block
+- `(history-add-change! history change)` - Add change to history
+
+#### Memory Statistics
+
+- `(get-memory-stats manager)` - Get memory statistics with history
+
+#### Convenience Functions
+
+- `(core-memory-set-block! manager block-label value #!key ...)` - Set block value
+- `(core-memory-clear-block! manager block-label)` - Clear block
+- `(core-memory-prepend! manager block-label text #!key ...)` - Prepend text
+
 ### Block Manager
 
 #### Constructor
@@ -360,6 +603,22 @@ No installation required - part of Project O's Gerbil codebase.
 
 (defstruct core-memory
   (persona human custom)
+  transparent: #t)
+
+(defstruct core-memory-manager
+  (block-manager history constraints)
+  transparent: #t)
+
+(defstruct memory-change
+  (timestamp operation block-label old-value new-value metadata)
+  transparent: #t)
+
+(defstruct memory-history
+  (agent-id changes max-history)
+  transparent: #t)
+
+(defstruct memory-constraints
+  (max-block-size min-block-size readonly-blocks required-blocks custom-validators)
   transparent: #t)
 
 (defstruct archival-entry
