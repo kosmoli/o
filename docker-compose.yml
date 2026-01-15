@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # Elixir Supervisor
+  o_supervisor:
+    build:
+      context: ./o_supervisor
+      dockerfile: Dockerfile
+    container_name: o_supervisor
+    hostname: o_supervisor
+    ports:
+      - "4000:4000"  # API port
+      - "9568:9568"  # Prometheus metrics
+    volumes:
+      - ./data/checkpoints:/app/data/checkpoints
+      - ./data/wal:/app/data/wal
+      - ./data/logs:/app/data/logs
+      - ./gerbil:/app/gerbil:ro
+    environment:
+      - MIX_ENV=prod
+      - GERBIL_HOME=/usr/local/gerbil
+      - GERBIL_EXECUTABLE=/usr/local/bin/gerbil
+      - CHECKPOINT_DIR=/app/data/checkpoints
+      - WAL_DIR=/app/data/wal
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - o_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: o_postgres
+    environment:
+      - POSTGRES_USER=o_user
+      - POSTGRES_PASSWORD=o_password
+      - POSTGRES_DB=o_database
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - o_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U o_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: o_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - o_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus (Metrics)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: o_prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    networks:
+      - o_network
+    restart: unless-stopped
+
+  # Grafana (Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: o_grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
+    networks:
+      - o_network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  o_network:
+    driver: bridge

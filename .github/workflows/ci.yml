@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  MIX_ENV: test
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: 1.15.7
+          otp-version: 26.1
+      
+      - name: Install dependencies
+        run: |
+          cd o_supervisor
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+      
+      - name: Check formatting
+        run: cd o_supervisor && mix format --check-formatted
+      
+      - name: Run tests
+        run: cd o_supervisor && mix test
