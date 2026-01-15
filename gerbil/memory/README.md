@@ -367,6 +367,171 @@ No installation required - part of Project O's Gerbil codebase.
 (core-memory-prepend! core-manager "persona" "Prefix: " separator: " ")
 ```
 
+### Archival Memory Operations
+
+#### Creating an Archival Manager
+
+```scheme
+(import :gerbil/memory/archival
+        :gerbil/database/client)
+
+;; Connect to database
+(db-connect!)
+
+;; Create archival manager with embedding support
+(def archival-mgr (make-archival-manager agent-id
+                                         llm-provider: :openai
+                                         llm-model: "text-embedding-3-small"
+                                         cache-enabled: #t))
+```
+
+#### Inserting Archival Entries
+
+```scheme
+;; Insert entry with embedding generation
+(archival-insert! archival-mgr
+                 "User prefers dark mode and technical documentation."
+                 importance: 0.8
+                 tags: '("preferences" "ui")
+                 generate-embedding?: #t)
+
+;; Insert without embedding (faster)
+(archival-insert! archival-mgr
+                 "User mentioned liking coffee."
+                 importance: 0.5
+                 tags: '("personal")
+                 generate-embedding?: #f)
+
+;; Insert batch entries
+(archival-insert-batch! archival-mgr
+                       (list (hash 'content "Entry 1"
+                                  'importance 0.7
+                                  'tags '("batch")
+                                  'generate_embedding #t)
+                             (hash 'content "Entry 2"
+                                  'importance 0.6
+                                  'tags '("batch")
+                                  'generate_embedding #f)))
+```
+
+#### Retrieving Archival Entries
+
+```scheme
+;; Get entry by ID
+(def entry (archival-get archival-mgr entry-id))
+
+;; Get all entries with pagination
+(def all-entries (archival-get-all archival-mgr limit: 100 offset: 0))
+
+;; Get recent entries
+(def recent (archival-get-recent archival-mgr 10))
+```
+
+#### Searching Archival Memory
+
+```scheme
+;; Text-based search
+(def results (archival-search archival-mgr "dark mode" limit: 5))
+(displayln (format "Found ~a entries" (length results)))
+
+;; Search by tags
+(def tagged (archival-search-by-tags archival-mgr '("preferences" "ui") limit: 10))
+
+;; Search by importance threshold
+(def important (archival-search-by-importance archival-mgr 0.7 limit: 10))
+```
+
+#### Archival Pagination
+
+```scheme
+;; Get paginated results
+(def page (archival-get-page archival-mgr 0 20))
+(displayln (format "Page ~a of ~a total entries"
+                   (archival-page-page page)
+                   (archival-page-total page)))
+
+(displayln (format "Has next: ~a" (archival-page-has-next? page)))
+(displayln (format "Has prev: ~a" (archival-page-has-prev? page)))
+
+;; Navigate pages
+(when (archival-page-has-next? page)
+  (def next-page-num (archival-get-next-page page))
+  (def next-page (archival-get-page archival-mgr next-page-num 20)))
+```
+
+#### Updating Archival Entries
+
+```scheme
+;; Update entry content
+(archival-update! archival-mgr entry-id
+                 (hash 'content "Updated content"
+                       'importance 0.9))
+
+;; Update importance only
+(archival-update-importance! archival-mgr entry-id 0.95)
+
+;; Add tags to entry
+(archival-add-tags! archival-mgr entry-id '("new-tag" "another-tag"))
+```
+
+#### Deleting Archival Entries
+
+```scheme
+;; Delete single entry
+(archival-delete! archival-mgr entry-id)
+
+;; Delete batch entries
+(archival-delete-batch! archival-mgr (list id1 id2 id3))
+
+;; Clear all archival memory
+(archival-clear! archival-mgr)
+```
+
+#### Archival Statistics
+
+```scheme
+;; Count entries
+(def count (archival-count archival-mgr))
+
+;; Calculate total size
+(def size (archival-total-size archival-mgr))
+
+;; Get comprehensive statistics
+(def stats (archival-get-stats archival-mgr))
+(displayln (format "Total entries: ~a" (hash-ref stats 'total_entries)))
+(displayln (format "Average importance: ~a" (hash-ref stats 'avg_importance)))
+(displayln (format "Entries with embeddings: ~a" (hash-ref stats 'entries_with_embeddings)))
+(displayln (format "Unique tags: ~a" (hash-ref stats 'unique_tags)))
+```
+
+#### Archival Export/Import
+
+```scheme
+;; Export to JSON (without embeddings for smaller size)
+(def json-export (archival-export archival-mgr
+                                 format: 'json
+                                 include-embeddings?: #f))
+
+;; Export to text
+(def text-export (archival-export archival-mgr format: 'text))
+
+;; Import from exported data
+(def export-data (string->json-object json-export))
+(archival-import! archival-mgr export-data)
+```
+
+#### Embedding Generation
+
+```scheme
+;; Generate single embedding
+(def embedding (generate-embedding archival-mgr "Text to embed"))
+(displayln (format "Embedding dimensions: ~a" (length embedding)))
+
+;; Generate batch embeddings
+(def embeddings (generate-embeddings-batch archival-mgr
+                                          '("Text 1" "Text 2" "Text 3")))
+```
+
 ### Searching Memory Blocks
 
 ```scheme
@@ -513,6 +678,80 @@ No installation required - part of Project O's Gerbil codebase.
 - `(core-memory-set-block! manager block-label value #!key ...)` - Set block value
 - `(core-memory-clear-block! manager block-label)` - Clear block
 - `(core-memory-prepend! manager block-label text #!key ...)` - Prepend text
+
+### Archival Memory Manager
+
+#### Constructor
+
+- `(make-archival-manager agent-id #!key ...)` - Create archival manager
+  - `llm-provider` - LLM provider for embeddings (default: :openai)
+  - `llm-model` - Embedding model (default: "text-embedding-3-small")
+  - `cache-enabled` - Enable caching (default: #t)
+
+#### Entry Creation
+
+- `(archival-insert! manager content #!key ...)` - Insert archival entry
+  - `importance` - Importance score 0.0-1.0 (default: 0.5)
+  - `tags` - List of tags (default: empty)
+  - `generate-embedding?` - Generate embedding (default: #t)
+
+- `(archival-insert-batch! manager entries)` - Insert multiple entries
+
+#### Entry Retrieval
+
+- `(archival-get manager entry-id)` - Get entry by ID
+- `(archival-get-all manager #!key (limit 100) (offset 0))` - Get all entries
+- `(archival-get-recent manager n)` - Get N recent entries
+
+#### Search Operations
+
+- `(archival-search manager query #!key (limit 10))` - Text-based search
+- `(archival-search-by-tags manager tags #!key (limit 10))` - Search by tags
+- `(archival-search-by-importance manager min-importance #!key (limit 10))` - Search by importance
+
+#### Pagination
+
+- `(archival-get-page manager page-number page-size)` - Get paginated entries
+- `(archival-get-next-page page-result)` - Get next page number
+- `(archival-get-prev-page page-result)` - Get previous page number
+
+#### Entry Update
+
+- `(archival-update! manager entry-id updates)` - Update entry
+- `(archival-update-importance! manager entry-id importance)` - Update importance
+- `(archival-add-tags! manager entry-id new-tags)` - Add tags
+
+#### Entry Deletion
+
+- `(archival-delete! manager entry-id)` - Delete entry
+- `(archival-delete-batch! manager entry-ids)` - Delete multiple entries
+- `(archival-clear! manager)` - Clear all entries
+
+#### Statistics
+
+- `(archival-count manager)` - Count entries
+- `(archival-total-size manager)` - Calculate total size
+- `(archival-get-stats manager)` - Get comprehensive statistics
+
+#### Caching
+
+- `(archival-cache-get manager entry-id)` - Get from cache
+- `(archival-cache-put! manager entry-id entry)` - Put in cache
+- `(archival-cache-invalidate! manager entry-id)` - Invalidate cache
+- `(archival-cache-clear! manager)` - Clear cache
+
+#### Export/Import
+
+- `(archival-export manager #!key ...)` - Export archival memory
+  - `format` - Export format (json or text)
+  - `include-embeddings?` - Include embeddings (default: #f)
+
+- `(archival-import! manager data)` - Import archival memory
+
+#### Embedding Generation
+
+- `(generate-embedding manager content)` - Generate single embedding
+- `(generate-embeddings-batch manager contents)` - Generate batch embeddings
 
 ### Block Manager
 
