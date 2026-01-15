@@ -11,6 +11,8 @@ The memory system provides:
 - **Memory Rollback** - Undo changes and restore previous states
 - **Memory Constraints** - Validation rules and size limits
 - **Archival Memory** - Long-term storage with semantic search
+- **Semantic Search** - Vector similarity search with embeddings
+- **Hybrid Search** - Combined text and vector search with ranking
 - **Recall Memory** - Short-term context management
 - **Memory Validation** - Validate memory parameters and consistency
 - **Memory Statistics** - Track memory usage and counts
@@ -532,6 +534,144 @@ No installation required - part of Project O's Gerbil codebase.
                                           '("Text 1" "Text 2" "Text 3")))
 ```
 
+### Semantic Search Operations
+
+#### Vector Similarity Search
+
+```scheme
+(import :gerbil/memory/semantic)
+
+;; Semantic search using vector similarity
+(def results (semantic-search archival-mgr "user preferences"
+                             limit: 5
+                             min-similarity: 0.5))
+
+(for-each
+ (lambda (result)
+   (displayln (format "Similarity: ~a - ~a"
+                     (hash-ref result 'similarity)
+                     (hash-ref result 'content))))
+ results)
+
+;; Search by pre-computed embedding
+(def query-embedding (generate-embedding archival-mgr "software development"))
+(def results (semantic-search-by-embedding archival-mgr query-embedding
+                                          limit: 10
+                                          min-similarity: 0.3))
+```
+
+#### Hybrid Search (Text + Vector)
+
+```scheme
+;; Combine text matching and vector similarity
+(def hybrid-results (hybrid-search archival-mgr "dark mode"
+                                  text-weight: 0.3
+                                  vector-weight: 0.7
+                                  limit: 5))
+
+(for-each
+ (lambda (result)
+   (displayln (format "Combined: ~a (text: ~a, vector: ~a)"
+                     (search-result-combined-score result)
+                     (search-result-text-score result)
+                     (search-result-vector-score result))))
+ hybrid-results)
+
+;; Advanced hybrid search with importance weighting
+(def advanced-results (hybrid-search-advanced archival-mgr "AI projects"
+                                             text-weight: 0.3
+                                             vector-weight: 0.5
+                                             importance-weight: 0.2
+                                             min-combined-score: 0.4))
+```
+
+#### Search Result Ranking
+
+```scheme
+;; Re-rank results with recency factor
+(def results (hybrid-search archival-mgr "user info" limit: 10))
+(def reranked (rerank-results results
+                             recency-factor: 0.3
+                             diversity-factor: 0.0))
+
+;; More recent entries get higher scores
+(for-each
+ (lambda (result)
+   (displayln (format "Score: ~a - ~a"
+                     (search-result-combined-score result)
+                     (hash-ref (search-result-entry result) 'content))))
+ reranked)
+```
+
+#### Batch Semantic Search
+
+```scheme
+;; Search multiple queries at once
+(def queries '("software development" "user preferences" "AI projects"))
+(def batch-results (batch-semantic-search archival-mgr queries
+                                         limit: 5
+                                         min-similarity: 0.3))
+
+;; Results are hash mapping queries to result lists
+(hash-for-each
+ (lambda (query results)
+   (displayln (format "Query: ~a - Found ~a results" query (length results))))
+ batch-results)
+```
+
+#### Find Similar Entries
+
+```scheme
+;; Find entries similar to a given entry
+(def similar (find-similar-entries archival-mgr entry-id
+                                  limit: 5
+                                  min-similarity: 0.5))
+
+(displayln (format "Found ~a similar entries" (length similar)))
+(for-each
+ (lambda (result)
+   (displayln (format "Similarity: ~a - ~a"
+                     (hash-ref result 'similarity)
+                     (hash-ref result 'content))))
+ similar)
+```
+
+#### Clustering by Similarity
+
+```scheme
+;; Cluster entries by vector similarity
+(def entries (archival-get-all archival-mgr limit: 100))
+(def entries-with-embeddings
+  (filter (lambda (e) (hash-ref e 'embedding #f)) entries))
+
+(def clusters (cluster-entries-by-similarity entries-with-embeddings
+                                            similarity-threshold: 0.7))
+
+(displayln (format "Created ~a clusters" (length clusters)))
+(for-each
+ (lambda (cluster)
+   (displayln (format "Cluster size: ~a" (length cluster))))
+ clusters)
+```
+
+#### Vector Operations
+
+```scheme
+;; Calculate cosine similarity between vectors
+(def v1 '(1.0 2.0 3.0))
+(def v2 '(4.0 5.0 6.0))
+(def similarity (cosine-similarity v1 v2))
+
+;; Calculate Euclidean distance
+(def distance (euclidean-distance v1 v2))
+
+;; Calculate dot product
+(def dot (vector-dot-product v1 v2))
+
+;; Calculate vector magnitude
+(def magnitude (vector-magnitude v1))
+```
+
 ### Searching Memory Blocks
 
 ```scheme
@@ -752,6 +892,82 @@ No installation required - part of Project O's Gerbil codebase.
 
 - `(generate-embedding manager content)` - Generate single embedding
 - `(generate-embeddings-batch manager contents)` - Generate batch embeddings
+
+### Semantic Search
+
+#### Vector Operations
+
+- `(vector-dot-product v1 v2)` - Calculate dot product of two vectors
+- `(vector-magnitude v)` - Calculate magnitude (L2 norm) of vector
+- `(cosine-similarity v1 v2)` - Calculate cosine similarity [-1.0, 1.0]
+- `(euclidean-distance v1 v2)` - Calculate Euclidean distance
+
+#### Semantic Search Operations
+
+- `(semantic-search manager query #!key ...)` - Search using vector similarity
+  - `limit` - Maximum results (default: 10)
+  - `min-similarity` - Minimum cosine similarity threshold (default: 0.0)
+  - Returns: List of entries with similarity scores
+
+- `(semantic-search-by-embedding manager query-embedding #!key ...)` - Search by pre-computed embedding
+  - `limit` - Maximum results (default: 10)
+  - `min-similarity` - Minimum similarity threshold (default: 0.0)
+
+#### Hybrid Search Operations
+
+- `(hybrid-search manager query #!key ...)` - Combine text and vector search
+  - `limit` - Maximum results (default: 10)
+  - `text-weight` - Weight for text matching (default: 0.3)
+  - `vector-weight` - Weight for vector similarity (default: 0.7)
+  - `min-text-score` - Minimum text score threshold (default: 0.0)
+  - `min-vector-score` - Minimum vector score threshold (default: 0.0)
+  - Returns: List of search-result structures
+
+- `(hybrid-search-advanced manager query #!key ...)` - Advanced hybrid search with importance
+  - `limit` - Maximum results (default: 10)
+  - `text-weight` - Weight for text matching (default: 0.3)
+  - `vector-weight` - Weight for vector similarity (default: 0.7)
+  - `importance-weight` - Weight for entry importance (default: 0.0)
+  - `min-combined-score` - Minimum combined score threshold (default: 0.0)
+
+- `(advanced-text-score content query)` - Calculate advanced text matching score
+  - Returns: Text score [0.0, 1.0]
+
+#### Search Result Ranking
+
+- `(rerank-results results #!key ...)` - Re-rank search results
+  - `diversity-factor` - Weight for diversity (default: 0.0)
+  - `recency-factor` - Weight for recency (default: 0.0)
+  - Returns: Re-ranked list of search-result structures
+
+#### Batch Operations
+
+- `(batch-semantic-search manager queries #!key ...)` - Search multiple queries
+  - `limit` - Maximum results per query (default: 10)
+  - `min-similarity` - Minimum similarity threshold (default: 0.0)
+  - Returns: Hash mapping queries to result lists
+
+#### Utilities
+
+- `(find-similar-entries manager entry-id #!key ...)` - Find similar entries
+  - `limit` - Maximum results (default: 5)
+  - `min-similarity` - Minimum similarity threshold (default: 0.5)
+  - Returns: List of similar entries with similarity scores
+
+- `(cluster-entries-by-similarity entries #!key ...)` - Cluster entries by similarity
+  - `similarity-threshold` - Minimum similarity for clustering (default: 0.7)
+  - Returns: List of clusters (each cluster is a list of entries)
+
+#### Search Result Structure
+
+```scheme
+(defstruct search-result
+  (entry            ; Archival entry
+   text-score       ; Text match score [0.0, 1.0]
+   vector-score     ; Vector similarity score [-1.0, 1.0]
+   combined-score)  ; Combined score [0.0, 1.0]
+  transparent: #t)
+```
 
 ### Block Manager
 
