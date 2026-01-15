@@ -22,6 +22,7 @@ defmodule OSupervisor.MixProject do
     [
       {:msgpax, "~> 2.3"},           # MessagePack serialization
       {:jason, "~> 1.4"},            # JSON (for config)
+      {:postgrex, "~> 0.17"},        # PostgreSQL driver
       {:telemetry, "~> 1.2"},        # Metrics
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
