@@ -1,56 +1,60 @@
-# O - Self-Evolving Agent System V2
+# O - Stateful AI Agent Platform in Gerbil Scheme
 
-**Project O V2** is a self-evolving AI Agent system with industrial-grade fault tolerance. Building upon the original Gerbil-based architecture, V2 introduces an Elixir/OTP supervision layer that prevents catastrophic self-destruction during evolution.
+**Project O** is a **memos-compatible AI agent platform** built in Gerbil Scheme with Elixir/OTP supervision. It provides stateful agents with long-term memory, multi-provider LLM support, and custom tool execution.
+
+**Based on**: [memos](https://github.com/cpacker/memos) (Letta fork with unified provider system)
 
 ---
 
 ## 🎯 Key Features
 
-- **Self-Evolution**: Agent can modify its own code at runtime
-- **Fault Tolerance**: Automatic crash recovery with state preservation
-- **Shadow Testing**: Safe evolution testing in isolated instances
-- **Multi-Threaded Evolution**: Parallel evolution experiments with genetic algorithms
-- **Zero Data Loss**: Checkpoints + WAL ensure durability
-- **Hot Reload**: Update code without downtime
+- **Stateful Memory**: Core memory blocks, archival memory, conversation history
+- **Multi-Provider LLM**: OpenAI, Anthropic, Groq, Ollama, and more
+- **Custom Tools**: User-defined functions with sandbox execution
+- **Fault Tolerance**: Automatic crash recovery via Elixir/OTP supervision
+- **REST API**: Full-featured API for agent management
+- **PostgreSQL**: Persistent storage with pgvector for semantic search
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  Elixir/OTP Supervisor (The Immortal Guardian)           │
-│  • Monitors Gerbil process heartbeat                     │
-│  • Holds memory snapshots in ETS/DETS                   │
-│  • Manages shadow instances for testing                 │
-│  • Restarts crashed processes with last known state     │
-└──────────────────────────────────────────────────────────┘
-                    ↕ Port Communication
-┌──────────────────────────────────────────────────────────┐
-│  Gerbil Agent (The Evolving Brain)                       │
-│  • Runs main agent logic                                 │
-│  • Generates and tests new code                         │
-│  • Sends checkpoints before risky operations            │
-│  • Can crash without consequences                       │
-└──────────────────────────────────────────────────────────┘
-                    ↓ FFI
-┌──────────────────────────────────────────────────────────┐
-│  Zig/Rust (The High-Performance Muscle)                  │
-│  • HTTP, databases, vector operations                    │
-│  • Stateless, cannot corrupt agent memory               │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│              Elixir Supervision Layer                   │
+│  • Fault tolerance & crash recovery                     │
+│  • State persistence (checkpoints + WAL)                │
+│  • Shadow testing for safe evolution                    │
+│  • Database operations (PostgreSQL)                     │
+└─────────────────────────────────────────────────────────┘
+                        ↕ MessagePack
+┌─────────────────────────────────────────────────────────┐
+│              Gerbil Agent Application                   │
+│                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Agent      │  │   Memory     │  │   Tools      │ │
+│  │   Core       │  │   System     │  │   System     │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   LLM        │  │   Message    │  │   HTTP       │ │
+│  │   Clients    │  │   Manager    │  │   Server     │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### Technology Stack
 
-| Layer | Technology | Responsibility | Portion |
-|-------|-----------|----------------|---------|
-| **Supervision** | **Elixir/OTP** | **Process lifecycle, state persistence** | **10%** |
-| **Meta** | Gerbil Scheme | Self-modification engine | 12% |
-| **Application** | Gerbil Scheme | Agent logic, DSL, memory, tools | 53% |
-| **Infrastructure** | Zig | HTTP, WebSocket, databases | 15% |
-| **Compute** | Rust | Vector operations, ML inference | 8% |
-| **Foundation** | C Libraries | PostgreSQL, SQLite, OpenSSL | 2% |
+| Layer | Technology | Responsibility | Status |
+|-------|-----------|----------------|--------|
+| **Supervision** | **Elixir/OTP** | Fault tolerance, persistence | ✅ Done |
+| **Agent Core** | **Gerbil Scheme** | Agent logic, DSL, lifecycle | ✅ Done |
+| **LLM Clients** | **Gerbil Scheme** | OpenAI, Anthropic, Groq, etc. | ⏳ Todo |
+| **HTTP Server** | **Gerbil Scheme** | REST API endpoints | ⏳ Todo |
+| **Memory System** | **Gerbil Scheme** | Blocks, archival, search | 🟡 Partial |
+| **Tool System** | **Gerbil Scheme** | Tool execution, sandbox | 🟡 Partial |
+| **Database** | **PostgreSQL + Elixir** | Persistent storage | 🟡 Partial |
+| **Vector Search** | **pgvector (optional)** | Semantic search | ⏳ Todo |
 
 ---
 
@@ -67,11 +71,8 @@ apt-get install elixir  # Ubuntu
 # Gerbil Scheme
 # Follow: https://cons.io/
 
-# Zig
-brew install zig
-
-# Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# PostgreSQL (optional, for local development)
+brew install postgresql@16
 ```
 
 ### Installation
@@ -112,20 +113,27 @@ docker-compose down
 
 ## 📚 Documentation
 
-### Core Documentation
+### Getting Started
+- **[README.md](README.md)** - This file (project overview)
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Detailed setup instructions
+
+### Architecture & Design
+- **[Memos Alignment Analysis](docs/MEMOS_ALIGNMENT_ANALYSIS.md)** - 🔥 **NEW**: Alignment with memos
+- **[Revised Roadmap](docs/REVISED_ROADMAP.md)** - 🔥 **NEW**: 20-week implementation plan
 - **[Architecture V2](docs/ARCHITECTURE_V2.md)** - Complete architecture overview
 - **[Elixir Integration Guide](docs/ELIXIR_INTEGRATION.md)** - Detailed implementation guide
-- **[Implementation Checklist](docs/IMPLEMENTATION_CHECKLIST.md)** - Step-by-step implementation
-- **[Message Schema](docs/protocol/MESSAGE_SCHEMA.md)** - Communication protocol
 
-### Phase Completion Reports
-- **[Phase 0 Completion](COMPLETION_SUMMARY.md)** - Elixir foundation complete
-- **[Phase 1 Completion](docs/PHASE_1_COMPLETION.md)** - Gerbil agent core complete
+### Implementation Status
+- **[Phase 0 Completion](COMPLETION_SUMMARY.md)** - Elixir foundation ✅
+- **[Phase 1 Completion](docs/PHASE_1_COMPLETION.md)** - Gerbil agent core ✅
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - Complete status
 
-### Architecture Decision Records
-- **[ADR-001: Elixir Supervision](docs/adr/001-elixir-supervision-layer.md)** - Supervision layer
-- **[ADR-002: Communication Protocol](docs/adr/002-communication-protocol.md)** - MessagePack over Port
-- **[ADR-003: Checkpoint Strategy](docs/adr/003-checkpoint-strategy.md)** - Hybrid persistence
+### Reference
+- **[FAQ](docs/FAQ.md)** - Frequently asked questions
+- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Command reference
+- **[Glossary](docs/GLOSSARY.md)** - Terminology
+- **[ADRs](docs/adr/)** - Architecture Decision Records
 
 ---
 
@@ -205,44 +213,55 @@ o/
 
 ## 🎯 Roadmap
 
-### Phase 0: Elixir Foundation ✅
-- [x] Elixir project setup
-- [x] Port communication
-- [x] MemoryVault (DETS + file backup)
-- [x] HealthMonitor (heartbeat + metrics)
+### Phase 0: Elixir Foundation ✅ (Complete)
+- [x] Elixir supervision layer (8 modules)
+- [x] Fault tolerance & crash recovery
+- [x] Checkpoint + WAL persistence
+- [x] Shadow testing infrastructure
+- [x] Docker deployment + CI/CD
 
-### Phase 1: Gerbil Core ✅
-- [x] Agent core with Elixir bridge
-- [x] DSL and state management
-- [x] Memory system with checkpoints
+### Phase 1: Gerbil Agent Core ✅ (Complete)
+- [x] Agent lifecycle management
+- [x] DSL (defagent, deftool, when->)
+- [x] State management with context
+- [x] Basic memory system
 - [x] Tool framework
-- [x] Integration tests
-- [x] Example agents
+- [x] Integration tests (28+ cases)
+- [x] Example agents (5 demos)
 
-### Phase 2: Infrastructure
-- [ ] Zig HTTP client module
-- [ ] Zig database modules
-- [ ] Gerbil FFI layer
-- [ ] Integration tests
+### Phase 2: LLM Integration & HTTP Server (Weeks 1-4) 🔥 **Current**
+- [ ] OpenAI & Anthropic clients
+- [ ] Groq & Ollama clients
+- [ ] Unified LLM client interface
+- [ ] HTTP server with routing
+- [ ] REST API endpoints (agents, messages)
 
-### Phase 3: Protected Evolution
-- [ ] Shadow testing infrastructure
-- [ ] WAL system integration
-- [ ] Checkpoint/recovery mechanism
-- [ ] First protected evolution demo
+### Phase 3: Database & Message System (Weeks 5-8)
+- [ ] PostgreSQL schema (memos-compatible)
+- [ ] Gerbil-Elixir database protocol
+- [ ] Message persistence & retrieval
+- [ ] Message streaming (SSE)
 
-### Phase 4: Multi-Threaded Evolution
-- [ ] Parallel shadow spawning
-- [ ] Genetic algorithm evolution
-- [ ] Adversarial evolution (Red/Blue)
+### Phase 4: Advanced Memory System (Weeks 9-12)
+- [ ] Memory blocks (persona, human, custom)
+- [ ] Core memory operations
+- [ ] Archival memory with search
+- [ ] Semantic search (pgvector)
+
+### Phase 5: Tool System Enhancement (Weeks 13-16)
+- [ ] Core tools (send_message, search, etc.)
+- [ ] Memory tools (append, replace, patch)
+- [ ] Tool execution sandbox
+- [ ] Tool rules & approval workflow
+
+### Phase 6: Agent Execution Loop (Weeks 17-20)
+- [ ] Step-based execution
+- [ ] LLM inference with tool calls
+- [ ] Context window management
+- [ ] Streaming execution
 - [ ] Performance optimization
 
-### Phase 5: Advanced Features
-- [ ] Agent modifies its own DSL
-- [ ] Agent generates new Zig modules
-- [ ] Agent optimizes memory strategy
-- [ ] Agent learns from feedback
-- [ ] Agent discovers and fixes bugs
+**See [Revised Roadmap](docs/REVISED_ROADMAP.md) for detailed week-by-week plan.**
 
 ---
 
@@ -310,7 +329,7 @@ Contributions are welcome! Please read our contributing guidelines before submit
 
 ---
 
-**Status**: Phase 0 & 1 Complete ✅, Phase 2 Ready
+**Status**: Phase 0 & 1 Complete ✅, Phase 2 Starting 🔥
 **Version**: 0.2.0
 **Last Updated**: 2026-01-16
 
@@ -318,36 +337,32 @@ Contributions are welcome! Please read our contributing guidelines before submit
 
 ## 🎉 Recent Updates
 
+### 🔥 Project Realignment (2026-01-16)
+
+**Major Update**: Project O is now aligned with [memos](https://github.com/cpacker/memos) functionality!
+
+**Key Changes**:
+- 🎯 **Goal**: Build memos-compatible agent in Gerbil Scheme
+- 🔧 **Strategy**: Gerbil-first (HTTP, LLM clients, database in Gerbil)
+- 📋 **Roadmap**: New 20-week plan with weekly milestones
+- 📚 **Resources**: Leveraging gerbil_scheme_book examples
+
+**What This Means**:
+- ✅ Phase 0 & 1 work remains valid (solid foundation)
+- 🔄 Phase 2+ refocused on memos functionality
+- 🚀 Prioritizing practical agent features over generic evolution
+- 📖 Clear path forward with available Gerbil examples
+
+See:
+- **[Memos Alignment Analysis](docs/MEMOS_ALIGNMENT_ANALYSIS.md)** - Detailed analysis
+- **[Revised Roadmap](docs/REVISED_ROADMAP.md)** - 20-week implementation plan
+
 ### Phase 1 Complete! (2026-01-16)
 
-Phase 1 (Gerbil Agent Core) has been successfully completed with:
+Phase 1 (Gerbil Agent Core) completed with:
+- ✅ 6 core modules (~3,650 lines)
+- ✅ 7 test suites (28+ test cases)
+- ✅ 5 example agents
+- ✅ Complete documentation
 
-- ✅ **6 core modules** (~2,350 lines of Gerbil Scheme)
-  - `agent/core.ss` - Agent structure and lifecycle management
-  - `agent/dsl.ss` - Declarative DSL with macros (defagent, deftool, when->)
-  - `agent/state.ss` - State management with context tracking
-  - `agent/memory.ss` - Memory system (short-term, long-term, episodic, semantic)
-  - `agent/tools.ss` - Tool framework with registry and execution
-  - `agent/elixir-bridge.ss` - Communication bridge to Elixir
-
-- ✅ **Comprehensive testing** (~600 lines)
-  - 7 test suites with 28+ test cases
-  - Full integration tests for checkpoint/restore
-  - All tests passing
-
-- ✅ **Example agents** (~550 lines)
-  - Echo agent (simple I/O)
-  - Counter agent (with custom tools)
-  - Memory agent (using memory system)
-  - DSL agent (using macros)
-  - Evolving agent (self-evolution triggers)
-
-**Key Features Implemented**:
-- Agent lifecycle management (initializing → running → evolving → suspended → terminated)
-- Automatic checkpointing with Elixir integration
-- Memory consolidation (short-term → long-term)
-- Tool execution with caching and validation
-- Declarative DSL for agent definition
-- Complete serialization/deserialization
-
-See **[Phase 1 Completion Report](docs/PHASE_1_COMPLETION.md)** for full details.
+See **[Phase 1 Completion Report](docs/PHASE_1_COMPLETION.md)** for details.
