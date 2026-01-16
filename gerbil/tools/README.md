@@ -663,9 +663,255 @@ All tool operations may throw errors. Use `try/catch` for error handling:
 (assert (tool-call-pending? call))
 ```
 
+## Tool Rules and Approval Workflow
+
+### Overview
+
+The tool rules system provides fine-grained control over tool execution through:
+- **Rule Engine** - Evaluate conditions and determine actions
+- **Approval Manager** - Manage approval requests and workflow
+- **Rule-Based Dispatcher** - Integrate rules with tool execution
+
+### Tool Rules
+
+Tool rules define conditions and actions for tool execution:
+
+```scheme
+(defstruct tool-rule
+  (id                    ; Unique rule ID
+   name                  ; Rule name
+   description           ; Rule description
+   condition             ; Condition function (tool-name, arguments, context) -> boolean
+   action                ; Action (:allow, :deny, :require-approval)
+   priority              ; Rule priority (higher = evaluated first)
+   enabled               ; Is rule enabled?
+   metadata)             ; Additional metadata
+  transparent: #t)
+```
+
+### Creating Rules
+
+```scheme
+;; Custom rule
+(def my-rule
+  (make-tool-rule
+   id: "my-rule"
+   name: "My Custom Rule"
+   description: "Require approval for important operations"
+   condition: (lambda (tool-name arguments context)
+               (and (equal? tool-name "archival_memory_insert")
+                    (> (hash-ref arguments 'importance 0) 8)))
+   action: :require-approval
+   priority: 50
+   enabled: #t
+   metadata: (hash)))
+
+;; Built-in rules
+(def allow-rule (make-always-allow-rule))
+(def deny-rule (make-deny-tool-rule "dangerous_tool"))
+(def approval-rule (make-require-approval-for-tool-rule "send_message"))
+```
+
+### Rule Engine
+
+The rule engine evaluates rules in priority order:
+
+```scheme
+;; Create rule engine
+(def engine (make-rule-engine))
+
+;; Add rules
+(rule-engine-add-rule! engine my-rule)
+(rule-engine-add-rule! engine approval-rule)
+
+;; Remove rule
+(rule-engine-remove-rule! engine "my-rule")
+
+;; Get rule
+(def rule (rule-engine-get-rule engine "my-rule"))
+
+;; Evaluate rules
+(def context (make-tool-execution-context
+              agent-id: agent-id
+              call-id: "call-123"
+              timestamp: (current-seconds)
+              metadata: (hash)))
+
+(def result (rule-engine-evaluate engine "send_message" (hash 'message "Test") context))
+;; Returns (cons :action "reason")
+;; Actions: :allow, :deny, :require-approval
+
+;; Get evaluation history
+(def history (rule-engine-get-history engine limit: 10))
+```
+
+### Approval Manager
+
+The approval manager handles approval requests:
+
+```scheme
+;; Create approval manager
+(def manager (make-approval-manager))
+
+;; Create approval request
+(def request (approval-manager-create-request! manager tool-call "Requires review"))
+
+;; Approve request
+(def approved (approval-manager-approve-request! manager
+                                                 (approval-request-id request)
+                                                 "reviewer-123"
+                                                 "Looks good"))
+
+;; Reject request
+(def rejected (approval-manager-reject-request! manager
+                                                (approval-request-id request)
+                                                "reviewer-123"
+                                                "Not allowed"))
+
+;; Get pending requests
+(def pending (approval-manager-get-pending manager))
+
+;; Get specific request
+(def req (approval-manager-get-request manager request-id))
+```
+
+### Rule-Based Dispatcher
+
+The rule-based dispatcher integrates rules with tool execution:
+
+```scheme
+;; Create rule-based dispatcher
+(def dispatcher (make-tool-dispatcher))
+(register-core-tools! dispatcher)
+(register-memory-tools! dispatcher)
+
+(def rbd (make-rule-based-dispatcher dispatcher))
+
+;; Add rules
+(rule-engine-add-rule! (rule-based-dispatcher-rule-engine rbd)
+                       (make-require-approval-for-tool-rule "archival_memory_insert"))
+
+;; Call tool - may require approval
+(def result (rule-based-dispatcher-call-tool rbd
+                                             "archival_memory_insert"
+                                             (hash 'content "Important data")
+                                             agent-id))
+
+;; Check result type
+(cond
+ ((tool-call? result)
+  ;; Tool executed directly (allowed or denied)
+  (if (tool-call-completed? result)
+      (displayln "Tool executed successfully")
+      (displayln (format "Tool denied: ~a" (tool-call-error result)))))
+
+ ((approval-request? result)
+  ;; Approval required
+  (displayln "Approval required")
+
+  ;; Approve and execute
+  (def executed (rule-based-dispatcher-approve-call! rbd
+                                                     (approval-request-id result)
+                                                     "reviewer-123"
+                                                     "Approved"))
+  (displayln (format "Executed: ~a" (tool-call-status executed))))
+
+ (else
+  (displayln "Unexpected result")))
+```
+
+### Rule Actions
+
+- **:allow** - Allow tool execution immediately
+- **:deny** - Deny tool execution with error
+- **:require-approval** - Queue for approval before execution
+
+### Rule Priority
+
+Rules are evaluated in priority order (highest first). First matching rule determines the action:
+
+```scheme
+;; High priority deny rule (evaluated first)
+(def deny-rule (make-tool-rule
+                id: "deny-dangerous"
+                name: "Deny Dangerous"
+                description: "Block dangerous operations"
+                condition: (lambda (tn args ctx) (equal? tn "dangerous_tool"))
+                action: :deny
+                priority: 100
+                enabled: #t
+                metadata: (hash)))
+
+;; Low priority allow rule (evaluated later)
+(def allow-rule (make-tool-rule
+                 id: "allow-all"
+                 name: "Allow All"
+                 description: "Allow everything else"
+                 condition: (lambda (tn args ctx) #t)
+                 action: :allow
+                 priority: 10
+                 enabled: #t
+                 metadata: (hash)))
+```
+
+### Approval Workflow Example
+
+```scheme
+;; Setup
+(def dispatcher (make-tool-dispatcher))
+(register-core-tools! dispatcher)
+(def rbd (make-rule-based-dispatcher dispatcher))
+
+;; Add approval rule for sensitive operations
+(rule-engine-add-rule! (rule-based-dispatcher-rule-engine rbd)
+                       (make-require-approval-for-tool-rule "send_message"))
+
+;; Agent calls tool
+(def result (rule-based-dispatcher-call-tool rbd
+                                             "send_message"
+                                             (hash 'message "Important message")
+                                             agent-id))
+
+;; Check if approval needed
+(when (approval-request? result)
+  (displayln "Approval request created")
+  (displayln (format "Request ID: ~a" (approval-request-id result)))
+  (displayln (format "Reason: ~a" (approval-request-reason result)))
+
+  ;; Get all pending requests
+  (def pending (approval-manager-get-pending (rule-based-dispatcher-approval-manager rbd)))
+  (displayln (format "Pending requests: ~a" (length pending)))
+
+  ;; Reviewer approves
+  (def executed (rule-based-dispatcher-approve-call! rbd
+                                                     (approval-request-id result)
+                                                     "reviewer-123"
+                                                     "Approved for execution"))
+
+  ;; Check execution result
+  (if (tool-call-completed? executed)
+      (displayln "Tool executed successfully after approval")
+      (displayln "Tool execution failed")))
+```
+
+### Built-in Rules
+
+```scheme
+;; Always allow (priority 0, enabled)
+(make-always-allow-rule)
+
+;; Always deny (priority 100, disabled by default)
+(make-always-deny-rule)
+
+;; Require approval for specific tool
+(make-require-approval-for-tool-rule "tool-name")
+
+;; Deny specific tool
+(make-deny-tool-rule "tool-name")
+```
+
 ## Future Enhancements
 
-- [ ] Tool sandboxing for security
 - [ ] Tool rate limiting
 - [ ] Tool usage statistics
 - [ ] Tool versioning
@@ -673,6 +919,9 @@ All tool operations may throw errors. Use `try/catch` for error handling:
 - [ ] Tool composition
 - [ ] Async tool execution
 - [ ] Tool result caching
+- [ ] Rule templates and presets
+- [ ] Conditional approval chains
+- [ ] Time-based rules
 
 ## License
 
