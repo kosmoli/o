@@ -742,6 +742,215 @@ Configure context window settings in agent config:
    metadata: (hash)))
 ```
 
+## Streaming Execution
+
+The streaming execution system provides real-time progress updates and callbacks during agent execution, enabling monitoring and event-driven workflows.
+
+### Overview
+
+Streaming execution wraps the base step executor with a callback system that fires events at key points during execution:
+- Execution start/complete/error
+- Step start/complete/error
+- Progress updates
+
+### Creating a Streaming Executor
+
+```scheme
+(import :gerbil/agent/streaming)
+
+;; Create with default callbacks (no-op)
+(def streaming-executor (make-streaming-executor base-executor))
+
+;; Create with logging callbacks
+(def logging-executor (make-streaming-executor
+                       base-executor
+                       callbacks: (make-logging-callbacks)))
+
+;; Create with custom callbacks
+(def custom-callbacks (make-custom-callbacks
+                       on-execution-start: (lambda (event)
+                                            (displayln "Starting execution..."))
+                       on-progress: (lambda (event)
+                                     (def data (execution-event-data event))
+                                     (displayln (format "Progress: ~a%"
+                                                       (hash-ref data 'percent))))))
+
+(def custom-executor (make-streaming-executor
+                      base-executor
+                      callbacks: custom-callbacks))
+```
+
+### Event Types
+
+The streaming system fires seven types of events:
+
+- `:execution-start` - Fired when execution begins
+- `:execution-complete` - Fired when execution completes successfully
+- `:execution-error` - Fired when execution fails
+- `:step-start` - Fired when a step begins
+- `:step-complete` - Fired when a step completes successfully
+- `:step-error` - Fired when a step fails
+- `:progress` - Fired after each step with progress percentage
+
+### Execution Events
+
+Each event is an `execution-event` structure containing:
+
+```scheme
+(defstruct execution-event
+  (type          ; Event type (:execution-start, :step-start, etc.)
+   timestamp     ; Event timestamp (seconds)
+   agent-id      ; Agent ID
+   data          ; Event data (hash)
+   metadata))    ; Additional metadata
+```
+
+### Callback Functions
+
+Callbacks receive an `execution-event` and can perform any action:
+
+```scheme
+;; Example: Track execution progress
+(def progress-tracker (box 0))
+
+(def callbacks (make-custom-callbacks
+                on-progress: (lambda (event)
+                              (def data (execution-event-data event))
+                              (set-box! progress-tracker
+                                       (hash-ref data 'percent)))))
+```
+
+### Using Logging Callbacks
+
+Built-in logging callbacks for debugging:
+
+```scheme
+(def executor (make-streaming-executor
+               base-executor
+               callbacks: (make-logging-callbacks)))
+
+(def result (execute-agent-streaming executor context))
+
+;; Output:
+;; [START] Execution started for agent agent-123
+;; [STEP START] Step 0: user-message
+;; [STEP COMPLETE] Step 0 completed in 0.5s
+;; [PROGRESS] 10% (1/10 steps)
+;; [STEP START] Step 1: llm-inference
+;; [STEP COMPLETE] Step 1 completed in 2.3s
+;; [PROGRESS] 20% (2/10 steps)
+;; ...
+;; [COMPLETE] Execution completed for agent agent-123
+```
+
+### Custom Callbacks
+
+Create custom callbacks for specific needs:
+
+```scheme
+;; Example: Collect execution metrics
+(def metrics (hash))
+
+(def callbacks (make-custom-callbacks
+                on-execution-start:
+                (lambda (event)
+                  (hash-put! metrics 'start_time (execution-event-timestamp event)))
+
+                on-step-complete:
+                (lambda (event)
+                  (def data (execution-event-data event))
+                  (def step-num (hash-ref data 'step_number))
+                  (def duration (hash-ref data 'duration))
+                  (hash-put! metrics
+                            (string->symbol (format "step_~a_duration" step-num))
+                            duration))
+
+                on-execution-complete:
+                (lambda (event)
+                  (hash-put! metrics 'end_time (execution-event-timestamp event))
+                  (displayln (format "Metrics: ~a" metrics)))))
+
+(def executor (make-streaming-executor base-executor callbacks: callbacks))
+(execute-agent-streaming executor context)
+```
+
+### Event Data
+
+Different event types include different data:
+
+**Execution Start:**
+```scheme
+(hash 'config (agent-config->hash config)
+      'state (agent-state->hash state))
+```
+
+**Step Start:**
+```scheme
+(hash 'step_number 0
+      'step_type :llm-inference)
+```
+
+**Step Complete:**
+```scheme
+(hash 'step_number 0
+      'step_type :llm-inference
+      'duration 2.5)
+```
+
+**Progress:**
+```scheme
+(hash 'current 5
+      'total 10
+      'percent 50)
+```
+
+**Error Events:**
+```scheme
+(hash 'error "Error message"
+      'step_number 3)
+```
+
+### Integration with Execution System
+
+Use streaming execution instead of regular execution:
+
+```scheme
+;; Regular execution
+(def result (execute-agent executor context))
+
+;; Streaming execution
+(def streaming-executor (make-streaming-executor executor))
+(def result (execute-agent-streaming streaming-executor context))
+```
+
+Both return the same `execution-result` structure, but streaming execution fires callbacks during execution.
+
+### Error Handling
+
+Errors are propagated through callbacks and the result:
+
+```scheme
+(def callbacks (make-custom-callbacks
+                on-execution-error:
+                (lambda (event)
+                  (def data (execution-event-data event))
+                  (displayln (format "Execution failed: ~a"
+                                    (hash-ref data 'error))))
+
+                on-step-error:
+                (lambda (event)
+                  (def data (execution-event-data event))
+                  (displayln (format "Step ~a failed: ~a"
+                                    (hash-ref data 'step_number)
+                                    (hash-ref data 'error))))))
+
+(def executor (make-streaming-executor base-executor callbacks: callbacks))
+(def result (execute-agent-streaming executor context))
+
+(when (not (execution-result-success result))
+  (displayln (format "Final error: ~a" (execution-result-error result))))
+```
+
 ## Examples
 
 ### Simple Agent Execution
@@ -823,12 +1032,12 @@ Configure context window settings in agent config:
 
 - [ ] Parallel step execution
 - [ ] Step checkpointing and recovery
-- [ ] Streaming execution with callbacks
 - [ ] Advanced step determination strategies
 - [ ] Step execution metrics and profiling
 - [ ] Step execution visualization
 - [ ] Multi-agent coordination
 - [ ] Step execution policies
+- [ ] Advanced summarization strategy for context window optimization
 
 ## License
 
