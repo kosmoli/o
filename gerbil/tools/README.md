@@ -240,6 +240,153 @@ Search through conversation history.
       'page 0)
 ```
 
+## Memory Tools
+
+### core_memory_append
+
+Append content to a core memory block.
+
+**Parameters:**
+- `name` (string, required) - Name of the memory block (e.g., 'persona', 'human')
+- `content` (string, required) - Content to append to the memory block
+
+**Example:**
+```scheme
+(def call (dispatcher-call-tool dispatcher
+                               "core_memory_append"
+                               (hash 'name "persona"
+                                     'content "I am helpful and friendly.")
+                               agent-id))
+```
+
+**Returns:**
+```scheme
+(hash 'block_name "persona"
+      'old_value "..."
+      'new_value "... I am helpful and friendly."
+      'updated_at 1705401600)
+```
+
+### core_memory_replace
+
+Replace content in a core memory block.
+
+**Parameters:**
+- `name` (string, required) - Name of the memory block (e.g., 'persona', 'human')
+- `old_content` (string, required) - Content to replace (must exist in the block)
+- `new_content` (string, required) - New content to replace with
+
+**Example:**
+```scheme
+(def call (dispatcher-call-tool dispatcher
+                               "core_memory_replace"
+                               (hash 'name "persona"
+                                     'old_content "helpful"
+                                     'new_content "very helpful")
+                               agent-id))
+```
+
+**Returns:**
+```scheme
+(hash 'block_name "persona"
+      'old_value "I am helpful."
+      'new_value "I am very helpful."
+      'updated_at 1705401600)
+```
+
+### archival_memory_insert
+
+Insert content into archival memory.
+
+**Parameters:**
+- `content` (string, required) - Content to store in archival memory
+- `importance` (integer, optional, default: 5) - Importance score (1-10)
+- `tags` (array, optional, default: []) - Tags for categorization
+
+**Example:**
+```scheme
+(def call (dispatcher-call-tool dispatcher
+                               "archival_memory_insert"
+                               (hash 'content "User prefers Python over JavaScript"
+                                     'importance 8
+                                     'tags '("preferences" "programming"))
+                               agent-id))
+```
+
+**Returns:**
+```scheme
+(hash 'id "uuid"
+      'content "User prefers Python over JavaScript"
+      'importance 8
+      'tags '("preferences" "programming")
+      'created_at 1705401600)
+```
+
+### archival_memory_search
+
+Search archival memory for relevant information.
+
+**Parameters:**
+- `query` (string, required) - Search query to find matching entries
+- `limit` (integer, optional, default: 10) - Maximum number of results
+- `page` (integer, optional, default: 0) - Page number for pagination
+
+**Example:**
+```scheme
+(def call (dispatcher-call-tool dispatcher
+                               "archival_memory_search"
+                               (hash 'query "Python"
+                                     'limit 5
+                                     'page 0)
+                               agent-id))
+```
+
+**Returns:**
+```scheme
+(hash 'results (list (hash 'id "uuid"
+                          'content "User prefers Python..."
+                          'importance 8
+                          'tags '("preferences")
+                          'created_at 1705401600)
+                    ...)
+      'count 5
+      'query "Python"
+      'page 0)
+```
+
+### archival_memory_semantic_search
+
+Search archival memory using semantic similarity.
+
+**Parameters:**
+- `query` (string, required) - Search query for semantic matching
+- `limit` (integer, optional, default: 10) - Maximum number of results
+- `min_similarity` (number, optional, default: 0.7) - Minimum similarity score (0.0-1.0)
+
+**Example:**
+```scheme
+(def call (dispatcher-call-tool dispatcher
+                               "archival_memory_semantic_search"
+                               (hash 'query "programming languages"
+                                     'limit 5
+                                     'min_similarity 0.7)
+                               agent-id))
+```
+
+**Returns:**
+```scheme
+(hash 'results (list (hash 'id "uuid"
+                          'content "User prefers Python..."
+                          'importance 8
+                          'tags '("preferences")
+                          'similarity 0.85
+                          'created_at 1705401600)
+                    ...)
+      'count 5
+      'query "programming languages"
+      'min_similarity 0.7)
+```
+
 ## API Reference
 
 ### Tool Structures
