@@ -619,6 +619,129 @@ Configure `max-steps` to prevent infinite loops:
 (def memory-manager (make-memory-block-manager db-client))
 ```
 
+## Context Window Manager
+
+The context window manager handles token limits and optimizes conversation history to fit within model constraints.
+
+### Creating a Context Window Manager
+
+```scheme
+(import :gerbil/agent/context)
+
+;; Create with default settings
+(def manager (make-context-window-manager))
+
+;; Create with custom settings
+(def custom-manager
+  (make-context-window-manager
+   max-tokens: 50000
+   system-tokens: 1000
+   response-tokens: 2048
+   strategy: :sliding))
+```
+
+### Token Counting
+
+```scheme
+;; Estimate tokens in text
+(def tokens (estimate-tokens "Hello, world!"))
+
+;; Count tokens in a message
+(def msg-tokens (count-message-tokens manager message))
+
+;; Count tokens in multiple messages
+(def total-tokens (count-messages-tokens manager messages))
+
+;; Count tokens in memory blocks
+(def block-tokens (count-memory-block-tokens manager block))
+
+;; Count tokens in system message
+(def sys-tokens (count-system-message-tokens manager persona blocks))
+```
+
+### Context Analysis
+
+```scheme
+;; Analyze token usage
+(def usage (analyze-context-usage manager context))
+
+;; Check usage statistics
+(displayln (format "Total tokens: ~a" (hash-ref usage 'total_tokens)))
+(displayln (format "Available: ~a" (hash-ref usage 'available_tokens)))
+(displayln (format "Usage: ~a%" (hash-ref usage 'usage_percent)))
+
+;; Check if context fits
+(if (check-context-fits manager context)
+    (displayln "Context fits within limits")
+    (displayln "Context needs optimization"))
+```
+
+### Optimization Strategies
+
+#### Truncate Strategy
+
+Removes oldest messages until context fits:
+
+```scheme
+(def manager (make-context-window-manager strategy: :truncate))
+(def optimized (optimize-context manager context))
+```
+
+#### Sliding Window Strategy
+
+Keeps first few messages (for context) and most recent messages:
+
+```scheme
+(def manager (make-context-window-manager strategy: :sliding))
+(def optimized (optimize-context manager context))
+```
+
+#### Summarize Strategy
+
+Summarizes older messages (placeholder - requires LLM):
+
+```scheme
+(def manager (make-context-window-manager strategy: :summarize))
+(def optimized (optimize-context manager context))
+```
+
+### Integration with Executor
+
+```scheme
+;; Create context window manager
+(def ctx-manager (make-context-window-manager
+                  max-tokens: 100000
+                  strategy: :sliding))
+
+;; Before execution, optimize context
+(def optimized-context (optimize-context ctx-manager context))
+
+;; Execute with optimized context
+(def result (execute-agent executor optimized-context))
+```
+
+### Context Window Configuration
+
+Configure context window settings in agent config:
+
+```scheme
+(def config
+  (make-agent-config
+   id: "agent-1"
+   name: "Assistant"
+   persona: "I am helpful"
+   human: "User"
+   llm-provider: :anthropic
+   llm-model: "claude-3-5-sonnet-20241022"
+   llm-config: (hash 'temperature 0.7 'max_tokens 4096)
+   max-steps: 50
+   context-window: 100000  ; Maximum context window size
+   tools-enabled: '("send_message")
+   memory-enabled: #t
+   streaming-enabled: #f
+   metadata: (hash)))
+```
+
 ## Examples
 
 ### Simple Agent Execution
