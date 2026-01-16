@@ -951,6 +951,180 @@ Errors are propagated through callbacks and the result:
   (displayln (format "Final error: ~a" (execution-result-error result))))
 ```
 
+## Performance Benchmarking
+
+The benchmarking system provides tools for measuring and analyzing execution performance.
+
+### Overview
+
+Performance benchmarking helps identify bottlenecks and optimize execution:
+- Measure execution time for operations
+- Calculate statistics (mean, min, max, stddev)
+- Track throughput (operations per second)
+- Compare different configurations
+
+### Creating Benchmark Configurations
+
+```scheme
+(import :gerbil/agent/benchmark)
+
+;; Create default configuration
+(def config (make-default-benchmark-config "my-benchmark"))
+
+;; Create custom configuration
+(def custom-config (make-benchmark-config
+                    name: "custom-benchmark"
+                    iterations: 100
+                    warmup-iterations: 10
+                    timeout: 120
+                    collect-memory: #f
+                    metadata: (hash)))
+```
+
+### Running Benchmarks
+
+```scheme
+;; Benchmark a simple operation
+(def result (run-benchmark
+             config
+             (lambda () (+ 1 1))))
+
+;; Print results
+(print-benchmark-result result)
+
+;; Output:
+;; Benchmark: my-benchmark
+;;   Iterations:  10
+;;   Total time:  0.5s
+;;   Mean time:   50ms
+;;   Min time:    45ms
+;;   Max time:    55ms
+;;   Std dev:     3ms
+;;   Throughput:  20.0 ops/sec
+```
+
+### Benchmark Results
+
+Benchmark results include comprehensive statistics:
+
+```scheme
+(def result (run-benchmark config thunk))
+
+;; Access result fields
+(benchmark-result-name result)          ; Benchmark name
+(benchmark-result-iterations result)    ; Number of iterations
+(benchmark-result-total-time result)    ; Total execution time
+(benchmark-result-mean-time result)     ; Mean time per iteration
+(benchmark-result-min-time result)      ; Minimum time
+(benchmark-result-max-time result)      ; Maximum time
+(benchmark-result-stddev-time result)   ; Standard deviation
+(benchmark-result-throughput result)    ; Operations per second
+```
+
+### Agent Execution Benchmarks
+
+Benchmark specific agent operations:
+
+```scheme
+;; Benchmark step execution
+(def step-result (benchmark-step-execution
+                  executor
+                  context
+                  step-type-llm-inference
+                  (hash)))
+
+(print-benchmark-result step-result)
+
+;; Benchmark full agent execution
+(def agent-result (benchmark-agent-execution
+                   executor
+                   context))
+
+(print-benchmark-result agent-result)
+```
+
+### Benchmark Suites
+
+Run multiple benchmarks together:
+
+```scheme
+(def suite-start (current-seconds))
+
+;; Run multiple benchmarks
+(def results (list
+              (benchmark-step-execution executor context step-type-llm-inference (hash))
+              (benchmark-step-execution executor context step-type-tool-call
+                                       (hash 'tool_name "test_tool"
+                                             'arguments (hash)))
+              (benchmark-agent-execution executor context)))
+
+(def suite (make-benchmark-suite
+            name: "Agent Execution Suite"
+            benchmarks: results
+            total-time: (- (current-seconds) suite-start)
+            metadata: (hash)))
+
+(print-benchmark-suite suite)
+```
+
+### Custom Benchmarks
+
+Create custom benchmarks for specific scenarios:
+
+```scheme
+;; Benchmark context window optimization
+(def ctx-bench-config (make-benchmark-config
+                       name: "context-optimization"
+                       iterations: 50
+                       warmup-iterations: 5
+                       timeout: 60
+                       collect-memory: #f
+                       metadata: (hash)))
+
+(def ctx-result (run-benchmark
+                 ctx-bench-config
+                 (lambda ()
+                   (optimize-context context-manager context))))
+
+(print-benchmark-result ctx-result)
+
+;; Benchmark message processing
+(def msg-bench-config (make-benchmark-config
+                       name: "message-processing"
+                       iterations: 100
+                       warmup-iterations: 10
+                       timeout: 60
+                       collect-memory: #f
+                       metadata: (hash)))
+
+(def msg-result (run-benchmark
+                 msg-bench-config
+                 (lambda ()
+                   (count-messages-tokens context-manager messages))))
+
+(print-benchmark-result msg-result)
+```
+
+### Performance Tips
+
+**Warmup Iterations:**
+- Use warmup iterations to stabilize performance
+- Typical warmup: 10-20% of total iterations
+
+**Iteration Count:**
+- More iterations = more accurate statistics
+- Balance accuracy with execution time
+- Typical range: 10-1000 iterations
+
+**Timeout:**
+- Set appropriate timeout for long operations
+- Prevents hanging on slow operations
+
+**Interpreting Results:**
+- Low stddev = consistent performance
+- High stddev = variable performance (investigate)
+- Compare throughput across configurations
+
 ## Examples
 
 ### Simple Agent Execution
