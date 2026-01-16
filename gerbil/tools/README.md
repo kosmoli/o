@@ -187,6 +187,63 @@ No installation required - part of Project O's Gerbil codebase.
   (displayln (format "Call found: ~a" (tool-call-tool-name call))))
 ```
 
+### Tool Execution Sandbox
+
+```scheme
+;; Create sandboxed dispatcher with default config
+(def sandboxed (make-sandboxed-dispatcher dispatcher))
+
+;; Execute tool in sandbox
+(def execution (sandboxed-dispatcher-call-tool sandboxed
+                                              "send_message"
+                                              (hash 'message "Hello!")
+                                              agent-id))
+
+;; Check result
+(if (sandbox-execution-succeeded? execution)
+    (displayln "Tool executed successfully")
+    (displayln (format "Tool execution failed: ~a" (sandbox-execution-error execution))))
+
+;; Create strict sandbox (only allows core tools)
+(def strict-config (make-strict-sandbox-config))
+(def strict-sandboxed (make-sandboxed-dispatcher dispatcher config: strict-config))
+
+;; Try to execute blocked tool
+(def blocked-execution (sandboxed-dispatcher-call-tool strict-sandboxed
+                                                      "archival_memory_insert"
+                                                      (hash 'content "Test")
+                                                      agent-id))
+(check (sandbox-execution-failed? blocked-execution))
+
+;; Create custom sandbox config
+(def custom-config (make-sandbox-config
+                    max-execution-time: 60
+                    max-memory-mb: 200
+                    allow-network: #f
+                    allow-file-read: #f
+                    allow-file-write: #f
+                    allowed-tools: '("send_message" "conversation_search")
+                    blocked-tools: '()))
+
+;; Get execution statistics
+(def stats (sandboxed-dispatcher-get-stats sandboxed))
+(displayln (format "Success rate: ~a%" (hash-ref stats 'success_rate)))
+(displayln (format "Total executions: ~a" (hash-ref stats 'total)))
+(displayln (format "Completed: ~a" (hash-ref stats 'completed)))
+(displayln (format "Timeouts: ~a" (hash-ref stats 'timeout)))
+(displayln (format "Errors: ~a" (hash-ref stats 'error)))
+
+;; Get sandbox execution history
+(def history (sandboxed-dispatcher-get-history sandboxed limit: 10))
+(for-each
+ (lambda (execution)
+   (displayln (format "~a: ~a (~as)"
+                     (sandbox-execution-tool-name execution)
+                     (sandbox-execution-status execution)
+                     (sandbox-execution-duration execution))))
+ history)
+```
+
 ## Core Tools
 
 ### send_message
