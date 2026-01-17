@@ -9,10 +9,10 @@
   :std/misc/hash
   :std/format
   :std/test
-  ../database/client
-  ./types
-  ./blocks
-  ./core)
+  :o/database/client
+  :o/memory/types
+  :o/memory/blocks
+  :o/memory/core)
 
 ;;; ============================================================================
 ;;; Test Setup

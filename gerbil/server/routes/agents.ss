@@ -8,8 +8,8 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  ../http
-  ../router)
+  :o/server/http
+  :o/server/router)
 
 ;;; ============================================================================
 ;;; Agent CRUD Operations

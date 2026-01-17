@@ -9,10 +9,10 @@
   :std/misc/hash
   :std/format
   :std/test
-  ./types
-  ./core
-  ./memory
-  ./sandbox)
+  :o/tools/types
+  :o/tools/core
+  :o/tools/memory
+  :o/tools/sandbox)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -252,7 +252,7 @@
                                           test-agent-id
                                           config: config))
       (def hash-repr (sandbox-execution->hash execution))
-      (check (hash? hash-repr))
+      (check (hash-table? hash-repr))
       (check (hash-key? hash-repr 'tool_name))
       (check (hash-key? hash-repr 'status))
       (check (hash-key? hash-repr 'duration)))

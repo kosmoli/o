@@ -15,17 +15,21 @@ defmodule OSupervisor do
   Returns the status of the main Gerbil instance.
   """
   def status do
-    case OSupervisor.GerbilManager.get_state(:main_gerbil) do
-      state when is_map(state) ->
-        {:ok, %{
-          role: state.role,
-          uptime: System.system_time(:second) - state.start_time,
-          checkpoint_id: state.checkpoint_id,
-          last_heartbeat: state.last_heartbeat
-        }}
-      
-      _ ->
-        {:error, :not_running}
+    try do
+      case OSupervisor.GerbilManager.get_state(:main_gerbil) do
+        state when is_map(state) ->
+          {:ok, %{
+            role: state.role,
+            uptime: System.system_time(:second) - state.start_time,
+            checkpoint_id: state.checkpoint_id,
+            last_heartbeat: state.last_heartbeat
+          }}
+
+        _ ->
+          {:error, :not_running}
+      end
+    catch
+      :exit, _ -> {:error, :not_running}
     end
   end
 

@@ -9,8 +9,8 @@
   :std/misc/hash
   :std/format
   :std/error
-  ./types
-  ./executor)
+  :o/agent/types
+  :o/agent/executor)
 
 ;;; ============================================================================
 ;;; Benchmark Types

@@ -159,7 +159,7 @@ defmodule OSupervisor.GerbilManager do
         {:packet, 4},  # 4-byte length prefix
         :binary,
         :exit_status,
-        {:env, [{'GERBIL_HOME', System.get_env("GERBIL_HOME") || "/usr/local/gerbil"}]}
+        {:env, [{~c"GERBIL_HOME", String.to_charlist(System.get_env("GERBIL_HOME") || "/usr/local/gerbil")}]}
       ]
     )
   end
@@ -245,7 +245,7 @@ defmodule OSupervisor.GerbilManager do
   end
 
   defp handle_gerbil_message(message, state) do
-    Logger.warn("Unknown message type: #{inspect(message)}")
+    Logger.warning("Unknown message type: #{inspect(message)}")
     {:noreply, state}
   end
 

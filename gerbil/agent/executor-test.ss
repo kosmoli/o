@@ -9,13 +9,13 @@
   :std/misc/hash
   :std/format
   :std/test
-  :gerbil/llm/types
-  :gerbil/tools/types
-  :gerbil/tools/core
-  :gerbil/message/types
-  :gerbil/memory/types
-  ./types
-  ./executor)
+  :o/llm/types
+  :o/tools/types
+  :o/tools/core
+  :o/message/types
+  :o/memory/types
+  :o/agent/types
+  :o/agent/executor)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -147,7 +147,7 @@
                  (hash 'content "Hello")))
       (def result (execute-step executor context step))
       (check (step-completed? result))
-      (check (hash? (execution-step-output result)))
+      (check (hash-table? (execution-step-output result)))
       (check (hash-key? (execution-step-output result) 'message_id)))
 
     (test-case "Execute LLM inference step"
@@ -160,7 +160,7 @@
                  (hash)))
       (def result (execute-step executor context step))
       (check (step-completed? result))
-      (check (hash? (execution-step-output result)))
+      (check (hash-table? (execution-step-output result)))
       (check (hash-key? (execution-step-output result) 'content))
       (check (equal? (hash-ref (execution-step-output result) 'content)
                     "This is a test response")))
@@ -176,7 +176,7 @@
                        'arguments (hash 'input "test"))))
       (def result (execute-step executor context step))
       (check (step-completed? result))
-      (check (hash? (execution-step-output result)))
+      (check (hash-table? (execution-step-output result)))
       (check (equal? (hash-ref (execution-step-output result) 'tool_name)
                     "test_tool")))
 
@@ -192,7 +192,7 @@
                        'content "Additional info")))
       (def result (execute-step executor context step))
       (check (step-completed? result))
-      (check (hash? (execution-step-output result)))
+      (check (hash-table? (execution-step-output result)))
       (check (equal? (hash-ref (execution-step-output result) 'operation)
                     "append")))
 
@@ -209,7 +209,7 @@
                        'new_content "Updated")))
       (def result (execute-step executor context step))
       (check (step-completed? result))
-      (check (hash? (execution-step-output result)))
+      (check (hash-table? (execution-step-output result)))
       (check (equal? (hash-ref (execution-step-output result) 'operation)
                     "replace")))
 
@@ -223,7 +223,7 @@
                  (hash 'action "test")))
       (def result (execute-step executor context step))
       (check (step-completed? result))
-      (check (hash? (execution-step-output result))))
+      (check (hash-table? (execution-step-output result))))
 
     (test-case "Step execution sets duration"
       (def executor (setup-test-executor))

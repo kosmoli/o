@@ -6,12 +6,13 @@
 (export #t)
 
 (import
-  :gerbil/gambit/threads
+  :std/misc/threads
   :std/sugar
+  :std/format
   :std/srfi/1
   :std/misc/hash
-  ./core
-  ./elixir-bridge)
+  :o/agent/core
+  :o/agent/elixir-bridge)
 
 ;;; ============================================================================
 ;;; defagent - Define an Agent
@@ -186,13 +187,8 @@
 
 (defrules defaction ()
   ((_ name (params ...) body ...)
-   (begin
-     (def (name params ...)
-       (let ((result (begin body ...)))
-         ;; Log action to WAL
-         (elixir-wal-log! 'name (hash 'params (list params ...)
-                                      'result result))
-         result)))))
+   (def (name params ...)
+     body ...)))
 
 ;;; ============================================================================
 ;;; agent-loop - Main Agent Processing Loop
@@ -218,10 +214,11 @@
 
        (catch (e)
          (displayln (format "Error in agent loop: ~a" e))
-         (elixir-send "agent_error"
-                      (hash 'agent_id (agent-id agent)
-                            'error (error-object->string e)
-                            'timestamp (time->seconds (current-time))))))
+         (let ((error-data (make-hash-table)))
+           (hash-put! error-data 'agent_id (agent-id agent))
+           (hash-put! error-data 'error (error-object->string e))
+           (hash-put! error-data 'timestamp (time->seconds (current-time)))
+           (elixir-send "agent_error" error-data))))
 
       ;; Continue loop
       (thread-sleep! 0.1)
@@ -240,7 +237,7 @@
 
 (def (perception-matches? input type)
   "Check if input matches perception type"
-  (and (hash? input)
+  (and (hash-table? input)
        (eq? (hash-ref input 'type #f) type)))
 
 (def (error-object->string e)
@@ -260,9 +257,10 @@
     (set! (agent-updated-at agent) (time->seconds (current-time)))
 
     ;; Log to WAL
-    (elixir-wal-log! 'register-tool
-                     (hash 'agent_id (agent-id agent)
-                           'tool_name tool-name))))
+    (let ((log-data (make-hash-table)))
+      (hash-put! log-data 'agent_id (agent-id agent))
+      (hash-put! log-data 'tool_name tool-name)
+      (elixir-wal-log! 'register-tool log-data))))
 
 (def (unregister-tool! agent tool-name)
   "Unregister a tool from the agent"
@@ -270,9 +268,10 @@
   (set! (agent-updated-at agent) (time->seconds (current-time)))
 
   ;; Log to WAL
-  (elixir-wal-log! 'unregister-tool
-                   (hash 'agent_id (agent-id agent)
-                         'tool_name tool-name)))
+  (let ((log-data (make-hash-table)))
+    (hash-put! log-data 'agent_id (agent-id agent))
+    (hash-put! log-data 'tool_name tool-name)
+    (elixir-wal-log! 'unregister-tool log-data)))
 
 (def (get-tool agent tool-name)
   "Get a tool by name"
@@ -352,7 +351,7 @@
    ((symbol? pattern)
     (eq? (hash-ref input 'type #f) pattern))
    ((list? pattern)
-    (and (hash? input)
+    (and (hash-table? input)
          (every (lambda (key)
                   (hash-key? input key))
                 (map car pattern))))

@@ -9,10 +9,10 @@
   :std/misc/hash
   :std/format
   :std/sort
-  ../database/client
-  ../llm/client
-  ./types
-  ./archival)
+  :o/database/client
+  :o/llm/client
+  :o/memory/types
+  :o/memory/archival)
 
 ;;; ============================================================================
 ;;; Vector Operations

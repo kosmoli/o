@@ -9,10 +9,10 @@
   :std/misc/hash
   :std/format
   :std/test
-  ./types
-  ./core
-  ./memory
-  ./rules)
+  :o/tools/types
+  :o/tools/core
+  :o/tools/memory
+  :o/tools/rules)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -79,7 +79,7 @@
     (test-case "Tool rule to hash"
       (def rule (make-always-allow-rule))
       (def hash-repr (tool-rule->hash rule))
-      (check (hash? hash-repr))
+      (check (hash-table? hash-repr))
       (check (hash-key? hash-repr 'id))
       (check (hash-key? hash-repr 'name))
       (check (hash-key? hash-repr 'action)))))
@@ -364,7 +364,7 @@
                  error: #f))
       (def request (approval-manager-create-request! manager call "Test reason"))
       (def hash-repr (approval-request->hash request))
-      (check (hash? hash-repr))
+      (check (hash-table? hash-repr))
       (check (hash-key? hash-repr 'id))
       (check (hash-key? hash-repr 'status))
       (check (hash-key? hash-repr 'reason)))))

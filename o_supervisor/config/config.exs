@@ -15,7 +15,6 @@ config :o_supervisor,
 
 config :logger,
   level: :info,
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :module, :function]
+  format: "$time $metadata[$level] $message\n"
 
 import_config "#{config_env()}.exs"

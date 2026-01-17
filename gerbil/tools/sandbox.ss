@@ -9,8 +9,8 @@
   :std/misc/hash
   :std/format
   :std/error
-  ./types
-  ./core)
+  :o/tools/types
+  :o/tools/core)
 
 ;;; ============================================================================
 ;;; Sandbox Configuration

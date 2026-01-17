@@ -10,9 +10,9 @@
   :std/misc/hash
   :std/format
   :std/error
-  :gerbil/message/types
-  :gerbil/memory/types
-  ./types)
+  :o/message/types
+  :o/memory/types
+  :o/agent/types)
 
 ;;; ============================================================================
 ;;; Context Window Manager

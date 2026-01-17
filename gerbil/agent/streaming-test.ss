@@ -9,14 +9,14 @@
   :std/misc/hash
   :std/format
   :std/test
-  :gerbil/llm/types
-  :gerbil/tools/types
-  :gerbil/tools/core
-  :gerbil/message/types
-  :gerbil/memory/types
-  ./types
-  ./executor
-  ./streaming)
+  :o/llm/types
+  :o/tools/types
+  :o/tools/core
+  :o/message/types
+  :o/memory/types
+  :o/agent/types
+  :o/agent/executor
+  :o/agent/streaming)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -167,7 +167,7 @@
       (check (execution-event? event))
       (check (eq? (execution-event-type event) event-type-execution-start))
       (check (equal? (execution-event-agent-id event) test-agent-id))
-      (check (hash? (execution-event-data event)))
+      (check (hash-table? (execution-event-data event)))
       (check (equal? (hash-ref (execution-event-data event) 'test) "data")))
 
     (test-case "Event has timestamp"
@@ -220,7 +220,7 @@
                             test-agent-id
                             (hash 'current 5 'total 10 'percent 50)))
       (invoke-callback callbacks event)
-      (check (hash? (unbox progress-data)))
+      (check (hash-table? (unbox progress-data)))
       (check (= (hash-ref (unbox progress-data) 'percent) 50)))
 
     (test-case "Invoke error callback"

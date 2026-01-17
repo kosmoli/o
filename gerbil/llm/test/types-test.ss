@@ -7,7 +7,7 @@
 (import
   :std/test
   :std/misc/hash
-  ../types)
+  :o/llm/types)
 
 ;;; ============================================================================
 ;;; Message Creation Tests
@@ -107,7 +107,7 @@
     (test-case "Convert message to hash"
       (let* ((msg (make-user-message "Hello"))
              (h (message->hash msg)))
-        (check (hash? h))
+        (check (hash-table? h))
         (check-equal? (hash-ref h 'role) "user")
         (check-equal? (hash-ref h 'content) "Hello")))
 
@@ -121,10 +121,10 @@
     (test-case "Convert tool call to hash"
       (let* ((tc (make-tool-call-instance "call-1" "func" "{\"a\": 1}"))
              (h (tool-call->hash tc)))
-        (check (hash? h))
+        (check (hash-table? h))
         (check-equal? (hash-ref h 'id) "call-1")
         (check-equal? (hash-ref h 'type) "function")
-        (check (hash? (hash-ref h 'function)))
+        (check (hash-table? (hash-ref h 'function)))
         (check-equal? (hash-ref (hash-ref h 'function) 'name) "func")))
 
     (test-case "Convert tool definition to hash"
@@ -133,9 +133,9 @@
                   "Calculate"
                   (hash 'type "object")))
              (h (tool-definition->hash td)))
-        (check (hash? h))
+        (check (hash-table? h))
         (check-equal? (hash-ref h 'type) "function")
-        (check (hash? (hash-ref h 'function)))
+        (check (hash-table? (hash-ref h 'function)))
         (check-equal? (hash-ref (hash-ref h 'function) 'name) "calc")))
 
     ;;; ========================================================================

@@ -9,9 +9,9 @@
   :std/misc/hash
   :std/format
   :std/test
-  ../database/client
-  ./types
-  ./core)
+  :o/database/client
+  :o/tools/types
+  :o/tools/core)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -35,8 +35,8 @@
     (test-case "Create empty registry"
       (def registry (make-tool-registry))
       (check (tool-registry? registry))
-      (check (hash? (tool-registry-tools registry)))
-      (check (hash? (tool-registry-categories registry))))
+      (check (hash-table? (tool-registry-tools registry)))
+      (check (hash-table? (tool-registry-categories registry))))
 
     (test-case "Register tool"
       (def registry (make-tool-registry))
@@ -358,7 +358,7 @@
                                      test-agent-id))
       (check (tool-call? call))
       (check (tool-call-completed? call))
-      (check (hash? (tool-call-result call))))
+      (check (hash-table? (tool-call-result call))))
 
     (test-case "Call non-existent tool fails"
       (def dispatcher (setup-test-dispatcher))
@@ -469,7 +469,7 @@
 
     (test-case "Tool definition to hash"
       (def hash-repr (tool-definition->hash send-message-tool))
-      (check (hash? hash-repr))
+      (check (hash-table? hash-repr))
       (check (hash-key? hash-repr 'name))
       (check (hash-key? hash-repr 'description))
       (check (hash-key? hash-repr 'parameters)))
@@ -485,7 +485,7 @@
                  result: "result"
                  error: #f))
       (def hash-repr (tool-call->hash call))
-      (check (hash? hash-repr))
+      (check (hash-table? hash-repr))
       (check (equal? (hash-ref hash-repr 'id) "test-id"))
       (check (equal? (hash-ref hash-repr 'status) "completed")))
 

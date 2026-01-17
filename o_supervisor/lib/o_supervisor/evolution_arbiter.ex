@@ -78,12 +78,12 @@ defmodule OSupervisor.EvolutionArbiter do
   @impl true
   def handle_info({:evaluate_shadow, shadow_pid, hypothesis}, state) do
     Logger.info("Evaluating shadow instance: #{inspect(shadow_pid)}")
-    
-    shadow_data = state.active_shadows[shadow_pid]
-    
+
+    _shadow_data = state.active_shadows[shadow_pid]
+
     # Get metrics
-    {:ok, main_metrics, _} = OSupervisor.HealthMonitor.get_metrics(:main_gerbil)
-    {:ok, shadow_metrics, _} = OSupervisor.HealthMonitor.get_metrics(shadow_pid)
+    {:ok, _main_metrics, _} = OSupervisor.HealthMonitor.get_metrics(:main_gerbil)
+    {:ok, _shadow_metrics, _} = OSupervisor.HealthMonitor.get_metrics(shadow_pid)
     
     # Compare performance
     {:ok, comparison} = OSupervisor.HealthMonitor.compare_instances(:main_gerbil, shadow_pid)

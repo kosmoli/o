@@ -8,8 +8,8 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  ../database/client
-  ./types)
+  :o/database/client
+  :o/memory/types)
 
 ;;; ============================================================================
 ;;; Memory Block Manager

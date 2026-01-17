@@ -10,7 +10,7 @@
   :std/text/json
   :std/sugar
   :std/misc/hash
-  ./types)
+  :o/llm/types)
 
 ;;; ============================================================================
 ;;; Groq Chat Completion

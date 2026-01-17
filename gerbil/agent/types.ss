@@ -303,14 +303,16 @@
    Returns:
      Hash representation"
 
-  (hash 'agent_id (agent-state-agent-id state)
-        'step_count (agent-state-step-count state)
-        'message_count (agent-state-message-count state)
-        'token_count (agent-state-token-count state)
-        'last_activity (agent-state-last-activity state)
-        'status (symbol->string (agent-state-status state))
-        'error (agent-state-error state)
-        'metadata (agent-state-metadata state)))
+  (let ((h (make-hash-table)))
+    (hash-put! h 'agent_id (agent-state-agent-id state))
+    (hash-put! h 'step_count (agent-state-step-count state))
+    (hash-put! h 'message_count (agent-state-message-count state))
+    (hash-put! h 'token_count (agent-state-token-count state))
+    (hash-put! h 'last_activity (agent-state-last-activity state))
+    (hash-put! h 'status (symbol->string (agent-state-status state)))
+    (hash-put! h 'error (agent-state-error state))
+    (hash-put! h 'metadata (agent-state-metadata state))
+    h))
 
 (def (execution-step->hash step)
   "Convert execution step to hash
@@ -321,17 +323,19 @@
    Returns:
      Hash representation"
 
-  (hash 'id (execution-step-id step)
-        'agent_id (execution-step-agent-id step)
-        'step_number (execution-step-step-number step)
-        'timestamp (execution-step-timestamp step)
-        'type (symbol->string (execution-step-type step))
-        'input (execution-step-input step)
-        'output (execution-step-output step)
-        'status (symbol->string (execution-step-status step))
-        'duration (execution-step-duration step)
-        'error (execution-step-error step)
-        'metadata (execution-step-metadata step)))
+  (let ((h (make-hash-table)))
+    (hash-put! h 'id (execution-step-id step))
+    (hash-put! h 'agent_id (execution-step-agent-id step))
+    (hash-put! h 'step_number (execution-step-step-number step))
+    (hash-put! h 'timestamp (execution-step-timestamp step))
+    (hash-put! h 'type (symbol->string (execution-step-type step)))
+    (hash-put! h 'input (execution-step-input step))
+    (hash-put! h 'output (execution-step-output step))
+    (hash-put! h 'status (symbol->string (execution-step-status step)))
+    (hash-put! h 'duration (execution-step-duration step))
+    (hash-put! h 'error (execution-step-error step))
+    (hash-put! h 'metadata (execution-step-metadata step))
+    h))
 
 (def (execution-result->hash result)
   "Convert execution result to hash
@@ -342,14 +346,16 @@
    Returns:
      Hash representation"
 
-  (hash 'success (execution-result-success result)
-        'agent_id (execution-result-agent-id result)
-        'steps_executed (execution-result-steps-executed result)
-        'final_state (agent-state->hash (execution-result-final-state result))
-        'output (execution-result-output result)
-        'error (execution-result-error result)
-        'duration (execution-result-duration result)
-        'metadata (execution-result-metadata result)))
+  (let ((h (make-hash-table)))
+    (hash-put! h 'success (execution-result-success result))
+    (hash-put! h 'agent_id (execution-result-agent-id result))
+    (hash-put! h 'steps_executed (execution-result-steps-executed result))
+    (hash-put! h 'final_state (agent-state->hash (execution-result-final-state result)))
+    (hash-put! h 'output (execution-result-output result))
+    (hash-put! h 'error (execution-result-error result))
+    (hash-put! h 'duration (execution-result-duration result))
+    (hash-put! h 'metadata (execution-result-metadata result))
+    h))
 
 ;;; ============================================================================
 ;;; Utility Functions
@@ -361,6 +367,6 @@
    Returns:
      UUID string"
 
-  (let ((timestamp (current-seconds))
+  (let ((timestamp (time->seconds (current-time)))
         (random (random-integer 1000000)))
     (format "~a-~a" timestamp random)))

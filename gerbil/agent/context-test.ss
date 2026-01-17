@@ -9,10 +9,10 @@
   :std/misc/hash
   :std/format
   :std/test
-  :gerbil/message/types
-  :gerbil/memory/types
-  ./types
-  ./context)
+  :o/message/types
+  :o/memory/types
+  :o/agent/types
+  :o/agent/context)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -142,7 +142,7 @@
       (def blocks (list (make-test-memory-block "persona" "Test")))
       (def context (make-test-context messages blocks))
       (def usage (analyze-context-usage manager context))
-      (check (hash? usage))
+      (check (hash-table? usage))
       (check (hash-key? usage 'max_tokens))
       (check (hash-key? usage 'system_tokens))
       (check (hash-key? usage 'message_tokens))

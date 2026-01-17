@@ -10,10 +10,10 @@
   :std/format
   :std/net/httpd
   :std/text/json
-  ../database/client
-  ../database/messages
-  ./types
-  ./manager)
+  :o/database/client
+  :o/database/messages
+  :o/message/types
+  :o/message/manager)
 
 ;;; ============================================================================
 ;;; Stream State Management
@@ -203,7 +203,7 @@
   (set! (message-stream-active? stream) #t)
   (displayln (format "Stream resumed: ~a" (message-stream-id stream))))
 
-(def (stream-abort! stream #!optional (reason "Aborted by user"))
+(def (stream-abort! stream (reason "Aborted by user"))
   "Abort streaming"
   (sse-send-error stream reason)
   (displayln (format "Stream aborted: ~a - ~a" (message-stream-id stream) reason)))
@@ -249,7 +249,7 @@
               (stream-send-chunk! stream chunk))
             chunks))
 
-(def (stream-complete! stream #!optional (final-message #f))
+(def (stream-complete! stream (final-message #f))
   "Complete streaming"
   (when (stream-active? stream)
     ;; Flush any remaining buffered chunks

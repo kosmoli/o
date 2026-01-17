@@ -10,9 +10,9 @@
   :std/format
   :std/sort
   :std/text/json
-  ../database/client
-  ../database/messages
-  ./types)
+  :o/database/client
+  :o/database/messages
+  :o/message/types)
 
 ;;; ============================================================================
 ;;; Message Manager State

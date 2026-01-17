@@ -8,11 +8,11 @@
 (import
   :std/sugar
   :std/misc/hash
-  ./types
-  ./openai
-  ./anthropic
-  ./groq
-  ./ollama)
+  :o/llm/types
+  :o/llm/openai
+  :o/llm/anthropic
+  :o/llm/groq
+  :o/llm/ollama)
 
 ;;; ============================================================================
 ;;; Provider Registry

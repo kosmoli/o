@@ -8,7 +8,7 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  ./client)
+  :o/database/client)
 
 ;;; ============================================================================
 ;;; Agent Management
@@ -143,7 +143,7 @@
   "Get agent statistics"
   (db-get-agent-statistics agent-id))
 
-(def (agent-increment-stat! agent-id stat-name #!optional (amount 1))
+(def (agent-increment-stat! agent-id stat-name (amount 1))
   "Increment a statistic"
   (let ((updates (hash stat-name amount)))
     (db-update-statistics agent-id updates)))

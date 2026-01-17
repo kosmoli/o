@@ -8,7 +8,7 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  ./http)
+  :o/server/http)
 
 ;;; ============================================================================
 ;;; Health Check

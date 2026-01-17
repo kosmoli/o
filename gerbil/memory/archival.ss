@@ -10,9 +10,9 @@
   :std/format
   :std/text/json
   :std/sort
-  ../database/client
-  ../llm/client
-  ./types)
+  :o/database/client
+  :o/llm/client
+  :o/memory/types)
 
 ;;; ============================================================================
 ;;; Archival Memory Manager

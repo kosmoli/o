@@ -6,8 +6,8 @@
 
 (import
   :std/test
-  ./types-test
-  ./client-test)
+  :o/llm/test/types-test
+  :o/llm/test/client-test)
 
 ;;; ============================================================================
 ;;; Test Runner

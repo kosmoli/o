@@ -9,15 +9,15 @@
   :std/misc/hash
   :std/format
   :std/error
-  :gerbil/llm/client
-  :gerbil/llm/types
-  :gerbil/tools/core
-  :gerbil/tools/types
-  :gerbil/memory/blocks
-  :gerbil/memory/core
-  :gerbil/message/manager
-  :gerbil/message/types
-  ./types)
+  :o/llm/client
+  :o/llm/types
+  :o/tools/core
+  :o/tools/types
+  :o/memory/blocks
+  :o/memory/core
+  :o/message/manager
+  :o/message/types
+  :o/agent/types)
 
 ;;; ============================================================================
 ;;; Step Executor

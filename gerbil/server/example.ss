@@ -9,10 +9,10 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  ./http
-  ./router
-  ./middleware
-  ./health)
+  :o/server/http
+  :o/server/router
+  :o/server/middleware
+  :o/server/health)
 
 ;;; ============================================================================
 ;;; Example Handlers

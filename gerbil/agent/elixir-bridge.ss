@@ -18,7 +18,7 @@
         :std/misc/queue
         :std/misc/hash
         :std/misc/uuid
-        :std/net/msgpack)
+        :o/std/net/msgpack)
 
 ;;; Global state
 (def *elixir-port* (current-output-port))
@@ -34,9 +34,9 @@
 ;;;   (elixir-send "heartbeat" #t)
 ;;;   (elixir-send "checkpoint" (hash 'state state-data))
 (def (elixir-send msg-type data)
-  (let* ((msg (hash 'type msg-type
-                    'data data
-                    'timestamp (time->seconds (current-time))))
+  (let* ((msg (hash ('type msg-type)
+                    ('data data)
+                    ('timestamp (time->seconds (current-time)))))
          (packed (msgpack-encode msg))
          (len (u8vector-length packed)))
     ;; Write 4-byte length prefix (big-endian)
@@ -75,17 +75,17 @@
                 (loop)))))))
 
 ;;; Create checkpoint
-;;; 
-;;; Serializes agent state and sends to Elixir for persistence.
+;;;
+;;; Sends serialized agent state to Elixir for persistence.
 ;;; Returns checkpoint ID.
-(def (elixir-checkpoint! agent)
-  (let ((snapshot (serialize-agent-state agent)))
-    ;; Send checkpoint request
-    (elixir-send "checkpoint" snapshot)
-    
-    ;; Wait for acknowledgment
-    (let ((ack (wait-for-message "checkpoint_ack" timeout: 30)))
-      (hash-ref ack 'checkpoint_id))))
+;;; Note: Caller must serialize agent state before calling this function.
+(def (elixir-checkpoint! snapshot)
+  ;; Send checkpoint request
+  (elixir-send "checkpoint" snapshot)
+
+  ;; Wait for acknowledgment
+  (let ((ack (wait-for-message "checkpoint_ack" timeout: 30)))
+    (hash-ref ack 'checkpoint_id)))
 
 ;;; Log operation to WAL
 ;;; 
@@ -94,10 +94,10 @@
 ;;; Example:
 ;;;   (elixir-wal-log! 'memory-add (hash 'content "some text"))
 (def (elixir-wal-log! operation data)
-  (elixir-send "wal_entry" 
-               (hash 'operation (symbol->string operation)
-                     'data data
-                     'timestamp (time->seconds (current-time)))))
+  (elixir-send "wal_entry"
+               (hash ('operation (symbol->string operation))
+                     ('data data)
+                     ('timestamp (time->seconds (current-time))))))
 
 ;;; Start heartbeat thread
 ;;; 
@@ -135,28 +135,31 @@
          (u8vector-ref bytes 3)))))
 
 ;;; Helper: Serialize agent state
-;;; 
+;;;
+;;; TODO: Move these serialization functions to agent/core.ss to avoid circular dependency
 ;;; Converts agent structure to serializable format.
 ;;; Override this in your agent implementation.
+#|
 (def (serialize-agent-state agent)
-  (hash 'id (agent-id agent)
-        'name (agent-name agent)
-        'version (agent-version agent)
-        'state (agent-state agent)
-        'memory (serialize-memory (agent-memory agent))
-        'tools (serialize-tools (agent-tools agent))))
+  (hash ('id (agent-id agent))
+        ('name (agent-name agent))
+        ('version (agent-version agent))
+        ('state (agent-state agent))
+        ('memory (serialize-memory (agent-memory agent)))
+        ('tools (serialize-tools (agent-tools agent)))))
 
 ;;; Helper: Serialize memory (placeholder)
 (def (serialize-memory memory)
   ;; TODO: Implement actual memory serialization
-  (hash 'blocks '()
-        'count 0))
+  (hash ('blocks '())
+        ('count 0)))
 
 ;;; Helper: Serialize tools (placeholder)
 (def (serialize-tools tools)
   ;; TODO: Implement actual tools serialization
-  (hash 'registered '()
-        'count 0))
+  (hash ('registered '())
+        ('count 0)))
+|#
 
 ;;; Example usage:
 ;;;

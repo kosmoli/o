@@ -6,17 +6,17 @@
 (export #t)
 
 (import
-  :gerbil/gambit/threads
+  :std/misc/threads
   :std/sugar
   :std/srfi/1
   :std/misc/hash
   :std/test
-  ../agent/core
-  ../agent/state
-  ../agent/memory
-  ../agent/tools
-  ../agent/dsl
-  ../agent/elixir-bridge)
+  :o/agent/core
+  :o/agent/state
+  :o/agent/memory
+  :o/agent/tools
+  :o/agent/dsl
+  :o/agent/elixir-bridge)
 
 ;;; ============================================================================
 ;;; Test Utilities
@@ -151,7 +151,7 @@
 
         ;; Create snapshot
         (let ((snapshot (snapshot-state state)))
-          (check (hash? snapshot) => #t)
+          (check (hash-table? snapshot) => #t)
           (check (hash-key? snapshot 'id) => #t)
           (check (hash-key? snapshot 'variables) => #t)
 
@@ -235,7 +235,7 @@
 
         ;; Serialize
         (let ((serialized (serialize-memory memory)))
-          (check (hash? serialized) => #t)
+          (check (hash-table? serialized) => #t)
           (check (hash-key? serialized 'id) => #t)
 
           ;; Deserialize
@@ -365,7 +365,7 @@
 
         ;; Serialize
         (let ((serialized (serialize-agent agent)))
-          (check (hash? serialized) => #t)
+          (check (hash-table? serialized) => #t)
           (check (hash-ref serialized 'name) => "TestAgent")
           (check (hash-ref serialized 'version) => "1.0.0"))
 
@@ -416,7 +416,7 @@
       (check (test-add 5 3) => 8)
 
       ;; Check tool spec was created
-      (check (hash? test-add-tool-spec) => #t)
+      (check (hash-table? test-add-tool-spec) => #t)
       (check (hash-ref test-add-tool-spec 'name) => "test-add"))
 
     (test-case "Conditional pipeline with when->"

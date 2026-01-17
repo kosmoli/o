@@ -11,7 +11,7 @@
   :std/format
   :std/net/socket
   :gerbil/gambit/ports
-  ../agent/msgpack)
+  :o/agent/msgpack)
 
 ;;; ============================================================================
 ;;; Database Client State

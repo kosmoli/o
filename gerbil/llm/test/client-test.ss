@@ -11,8 +11,8 @@
 (import
   :std/test
   :std/misc/hash
-  ../types
-  ../client)
+  :o/llm/types
+  :o/llm/client)
 
 ;;; ============================================================================
 ;;; Helper Functions

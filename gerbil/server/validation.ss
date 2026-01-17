@@ -9,7 +9,7 @@
   :std/misc/hash
   :std/format
   :std/srfi/13
-  ./http)
+  :o/server/http)
 
 ;;; ============================================================================
 ;;; Validation Errors
@@ -77,7 +77,7 @@
 
 (def (validate-hash field-name value)
   "Validate that field is a hash"
-  (if (not (hash? value))
+  (if (not (hash-table? value))
       (make-validation-error
        field: field-name
        message: (format "Field '~a' must be an object" field-name)

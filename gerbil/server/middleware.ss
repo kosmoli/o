@@ -11,7 +11,7 @@
   :std/format
   :std/logger
   :std/srfi/19
-  ./http)
+  :o/server/http)
 
 ;;; ============================================================================
 ;;; Middleware Types

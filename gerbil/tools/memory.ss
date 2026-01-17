@@ -9,12 +9,12 @@
   :std/misc/hash
   :std/format
   :std/text/json
-  ../memory/blocks
-  ../memory/core
-  ../memory/archival
-  ../memory/semantic
-  ./types
-  ./core)
+  :o/memory/blocks
+  :o/memory/core
+  :o/memory/archival
+  :o/memory/semantic
+  :o/tools/types
+  :o/tools/core)
 
 ;;; ============================================================================
 ;;; Core Memory Tools

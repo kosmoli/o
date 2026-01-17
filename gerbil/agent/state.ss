@@ -7,13 +7,26 @@
 (export #t)
 
 (import
-  :gerbil/gambit/threads
+  :std/misc/threads
   :std/sugar
   :std/srfi/1
   :std/srfi/13
   :std/misc/hash
   :std/misc/uuid
-  ./elixir-bridge)
+  :o/agent/elixir-bridge)
+
+;;; ============================================================================
+;;; Helper Functions
+;;; ============================================================================
+
+;;; Helper function to convert association list to hash table
+(def (list->hash lst)
+  "Convert association list to hash table"
+  (let ((h (hash)))
+    (for-each (lambda (pair)
+                (hash-put! h (car pair) (cdr pair)))
+              lst)
+    h))
 
 ;;; ============================================================================
 ;;; State Structure
@@ -96,7 +109,7 @@
   (make-execution-context
    id: (uuid->string (make-uuid))
    parent-id: #f
-   type: :main
+   type: ':main
    input: #f
    output: #f
    variables: (hash)
@@ -115,11 +128,11 @@
 
   ;; Log to WAL
   (elixir-wal-log! 'state-set
-                   (hash 'state_id (agent-state-id state)
-                         'key (symbol->string key)
-                         'value value)))
+                   (hash ('state_id (agent-state-id state))
+                         ('key (symbol->string key))
+                         ('value value))))
 
-(def (state-get state key #!optional (default #f))
+(def (state-get state key (default #f))
   "Get a state variable"
   (hash-ref (agent-state-variables state) key default))
 
@@ -134,8 +147,8 @@
 
   ;; Log to WAL
   (elixir-wal-log! 'state-delete
-                   (hash 'state_id (agent-state-id state)
-                         'key (symbol->string key))))
+                   (hash ('state_id (agent-state-id state))
+                         ('key (symbol->string key)))))
 
 (def (state-clear! state)
   "Clear all state variables"
@@ -144,7 +157,7 @@
 
   ;; Log to WAL
   (elixir-wal-log! 'state-clear
-                   (hash 'state_id (agent-state-id state))))
+                   (hash ('state_id (agent-state-id state)))))
 
 ;;; ============================================================================
 ;;; Context Management
@@ -154,7 +167,7 @@
   "Set a context variable"
   (hash-put! (execution-context-variables context) key value))
 
-(def (context-get context key #!optional (default #f))
+(def (context-get context key (default #f))
   "Get a context variable"
   (hash-ref (execution-context-variables context) key default))
 
@@ -237,11 +250,11 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'history-entry
-                     (hash 'state_id (agent-state-id state)
-                           'entry_id (history-entry-id entry)
-                           'action action))))
+                     (hash ('state_id (agent-state-id state))
+                           ('entry_id (history-entry-id entry))
+                           ('action action)))))
 
-(def (get-history state #!optional (limit 100))
+(def (get-history state (limit 100))
   "Get execution history (most recent first)"
   (take (agent-state-history state) limit))
 
@@ -260,7 +273,7 @@
 ;;; Conversation Management
 ;;; ============================================================================
 
-(def (add-message! state role content #!optional (metadata (hash)))
+(def (add-message! state role content (metadata (hash)))
   "Add a message to conversation history"
   (let ((message (make-conversation-message
                   id: (uuid->string (make-uuid))
@@ -277,17 +290,17 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'conversation-message
-                     (hash 'state_id (agent-state-id state)
-                           'message_id (conversation-message-id message)
-                           'role (symbol->string role)))
+                     (hash ('state_id (agent-state-id state))
+                           ('message_id (conversation-message-id message))
+                           ('role (symbol->string role))))
 
     message))
 
-(def (get-conversation state #!optional (limit 100))
+(def (get-conversation state (limit 100))
   "Get conversation history (most recent first)"
   (take (agent-state-conversation state) limit))
 
-(def (get-conversation-context state #!optional (limit 10))
+(def (get-conversation-context state (limit 10))
   "Get recent conversation for context (oldest first)"
   (reverse (take (agent-state-conversation state) limit)))
 
@@ -341,24 +354,24 @@
 (def (snapshot-context context)
   "Create a snapshot of execution context"
   (hash
-   'id (execution-context-id context)
-   'parent_id (execution-context-parent-id context)
-   'type (symbol->string (execution-context-type context))
-   'variables (hash->list (execution-context-variables context))
-   'stack (execution-context-stack context)))
+   ('id (execution-context-id context))
+   ('parent_id (execution-context-parent-id context))
+   ('type (symbol->string (execution-context-type context)))
+   ('variables (hash->list (execution-context-variables context)))
+   ('stack (execution-context-stack context))))
 
 (def (snapshot-state state)
   "Create a complete snapshot of agent state"
   (hash
-   'id (agent-state-id state)
-   'context (snapshot-context (agent-state-context state))
-   'variables (hash->list (agent-state-variables state))
-   'conversation (map conversation-message->hash
-                      (take (agent-state-conversation state) 100))
-   'pending_actions (agent-state-pending-actions state)
-   'metadata (hash->list (agent-state-metadata state))
-   'created_at (agent-state-created-at state)
-   'updated_at (agent-state-updated-at state)))
+   ('id (agent-state-id state))
+   ('context (snapshot-context (agent-state-context state)))
+   ('variables (hash->list (agent-state-variables state)))
+   ('conversation (map conversation-message->hash
+                       (take (agent-state-conversation state) 100)))
+   ('pending_actions (agent-state-pending-actions state))
+   ('metadata (hash->list (agent-state-metadata state)))
+   ('created_at (agent-state-created-at state))
+   ('updated_at (agent-state-updated-at state))))
 
 ;;; ============================================================================
 ;;; State Restoration
@@ -400,20 +413,20 @@
 (def (conversation-message->hash msg)
   "Convert conversation message to hash"
   (hash
-   'id (conversation-message-id msg)
-   'role (symbol->string (conversation-message-role msg))
-   'content (conversation-message-content msg)
-   'metadata (hash->list (conversation-message-metadata msg))
-   'timestamp (conversation-message-timestamp msg)))
+   ('id (conversation-message-id msg))
+   ('role (symbol->string (conversation-message-role msg)))
+   ('content (conversation-message-content msg))
+   ('metadata (hash->list (conversation-message-metadata msg)))
+   ('timestamp (conversation-message-timestamp msg))))
 
 (def (hash->conversation-message h)
   "Convert hash to conversation message"
   (make-conversation-message
-   id: (hash-ref h 'id)
-   role: (string->symbol (hash-ref h 'role))
-   content: (hash-ref h 'content)
-   metadata: (list->hash (hash-ref h 'metadata))
-   timestamp: (hash-ref h 'timestamp)))
+   (hash-ref h 'id)
+   (string->symbol (hash-ref h 'role))
+   (hash-ref h 'content)
+   (list->hash (hash-ref h 'metadata))
+   (hash-ref h 'timestamp)))
 
 ;;; ============================================================================
 ;;; State Metadata
@@ -424,7 +437,7 @@
   (hash-put! (agent-state-metadata state) key value)
   (set! (agent-state-updated-at state) (time->seconds (current-time))))
 
-(def (state-get-metadata state key #!optional (default #f))
+(def (state-get-metadata state key (default #f))
   "Get state metadata"
   (hash-ref (agent-state-metadata state) key default))
 
@@ -435,14 +448,14 @@
 (def (state-stats state)
   "Get state statistics"
   (hash
-   'id (agent-state-id state)
-   'num_variables (hash-length (agent-state-variables state))
-   'num_history_entries (length (agent-state-history state))
-   'num_conversation_messages (length (agent-state-conversation state))
-   'num_pending_actions (length (agent-state-pending-actions state))
-   'created_at (agent-state-created-at state)
-   'updated_at (agent-state-updated-at state)
-   'age (- (time->seconds (current-time)) (agent-state-created-at state))))
+   ('id (agent-state-id state))
+   ('num_variables (hash-length (agent-state-variables state)))
+   ('num_history_entries (length (agent-state-history state)))
+   ('num_conversation_messages (length (agent-state-conversation state)))
+   ('num_pending_actions (length (agent-state-pending-actions state)))
+   ('created_at (agent-state-created-at state))
+   ('updated_at (agent-state-updated-at state))
+   ('age (- (time->seconds (current-time)) (agent-state-created-at state)))))
 
 ;;; ============================================================================
 ;;; State Validation
@@ -454,7 +467,7 @@
    (agent-state? state)
    (string? (agent-state-id state))
    (execution-context? (agent-state-context state))
-   (hash? (agent-state-variables state))
+   (hash-table? (agent-state-variables state))
    (list? (agent-state-history state))
    (list? (agent-state-conversation state))
    (list? (agent-state-pending-actions state))))
@@ -496,8 +509,8 @@
 
 ;; Add history entry
 (add-history-entry! my-state
-                    (hash 'type 'process-input 'input "test")
-                    (hash 'status 'success))
+                    (hash ('type 'process-input) ('input "test"))
+                    (hash ('status 'success)))
 
 ;; Create snapshot
 (def snapshot (snapshot-state my-state))

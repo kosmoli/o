@@ -8,7 +8,7 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  ./client)
+  :o/database/client)
 
 ;;; ============================================================================
 ;;; Message Management

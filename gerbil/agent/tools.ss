@@ -10,13 +10,14 @@
 (export #t)
 
 (import
-  :gerbil/gambit/threads
+  :std/misc/threads
   :std/sugar
+  :std/format
   :std/srfi/1
   :std/srfi/13
   :std/misc/hash
   :std/misc/uuid
-  ./elixir-bridge)
+  :o/agent/elixir-bridge)
 
 ;;; ============================================================================
 ;;; Tool Structure
@@ -28,7 +29,7 @@
    description       ; Tool description
    parameters        ; Parameter specification
    function          ; Tool function
-   category          ; Tool category: :builtin :custom :external
+   category          ; Tool category: ':builtin :custom :external
    async?            ; Whether tool is async
    cacheable?        ; Whether results can be cached
    timeout           ; Execution timeout (seconds)
@@ -72,7 +73,7 @@
 
 (defstruct parameter-spec
   (name              ; Parameter name
-   type              ; Parameter type: :string :number :boolean :object :array
+   type              ; Parameter type: ':string :number :boolean :object :array
    required?         ; Whether parameter is required
    default           ; Default value (if not required)
    description       ; Parameter description
@@ -101,14 +102,13 @@
 ;;; ============================================================================
 
 (def (make-tool-instance name function
-                         #!key
-                         (description "")
-                         (parameters '())
-                         (category :custom)
-                         (async? #f)
-                         (cacheable? #f)
-                         (timeout 30)
-                         (metadata (hash)))
+                         description: (description "")
+                         parameters: (parameters '())
+                         category: (category ':custom)
+                         async?: (async? #f)
+                         cacheable?: (cacheable? #f)
+                         timeout: (timeout 30)
+                         metadata: (metadata (hash)))
   "Create a new tool"
   (make-tool
    id: (uuid->string (make-uuid))
@@ -145,9 +145,9 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'tool-register
-                     (hash 'registry_id (tool-registry-id registry)
-                           'tool_name tool-name
-                           'category (symbol->string category)))
+                     (hash ('registry_id (tool-registry-id registry))
+                           ('tool_name tool-name)
+                           ('category (symbol->string category))))
 
     tool))
 
@@ -170,8 +170,8 @@
 
         ;; Log to WAL
         (elixir-wal-log! 'tool-unregister
-                         (hash 'registry_id (tool-registry-id registry)
-                               'tool_name tool-name))))))
+                         (hash ('registry_id (tool-registry-id registry))
+                               ('tool_name tool-name)))))))
 
 ;;; ============================================================================
 ;;; Tool Lookup
@@ -181,7 +181,7 @@
   "Get a tool by name"
   (hash-ref (tool-registry-tools registry) tool-name #f))
 
-(def (list-tools registry #!optional (category #f))
+(def (list-tools registry (category #f))
   "List all tools, optionally filtered by category"
   (if category
       (hash-ref (tool-registry-categories registry) category '())
@@ -227,12 +227,12 @@
 (def (validate-parameter-type value type)
   "Validate parameter type"
   (case type
-    ((:string) (string? value))
-    ((:number) (number? value))
-    ((:boolean) (boolean? value))
-    ((:object) (hash? value))
-    ((:array) (list? value))
-    ((:any) #t)
+    ((':string) (string? value))
+    ((':number) (number? value))
+    ((':boolean) (boolean? value))
+    ((':object) (hash-table? value))
+    ((':array) (list? value))
+    ((':any) #t)
     (else #f)))
 
 ;;; ============================================================================
@@ -283,9 +283,9 @@
 
             ;; Notify Elixir
             (elixir-send "tool_executed"
-                         (hash 'tool_name tool-name
-                               'success (tool-result-success? tool-result)
-                               'duration duration))
+                         (hash ('tool_name tool-name)
+                               ('success (tool-result-success? tool-result))
+                               ('duration duration)))
 
             tool-result)))))
 
@@ -361,7 +361,7 @@
              (cache-key tool-name params)
              result))
 
-(def (clear-cache! registry #!optional (tool-name #f))
+(def (clear-cache! registry (tool-name #f))
   "Clear result cache"
   (if tool-name
       ;; Clear cache for specific tool
@@ -389,7 +389,7 @@
     (set! (tool-registry-execution-log registry)
           (take (cons result log) 1000))))
 
-(def (get-execution-log registry #!optional (limit 100))
+(def (get-execution-log registry (limit 100))
   "Get execution log"
   (take (tool-registry-execution-log registry) limit))
 
@@ -409,12 +409,12 @@
                            0)))
 
     (hash
-     'tool_name tool-name
-     'total_executions total
-     'successful successful
-     'failed failed
-     'success_rate (if (> total 0) (/ successful total) 0)
-     'avg_duration_ms avg-duration)))
+     ('tool_name tool-name)
+     ('total_executions total)
+     ('successful successful)
+     ('failed failed)
+     ('success_rate (if (> total 0) (/ successful total) 0))
+     ('avg_duration_ms avg-duration))))
 
 ;;; ============================================================================
 ;;; Built-in Tools
@@ -432,10 +432,10 @@
                    parameters: (list
                                 (make-parameter-spec
                                  name: 'message
-                                 type: :string
+                                 type: ':string
                                  required?: #t
                                  description: "Message to echo"))
-                   category: :builtin
+                   category: ':builtin
                    cacheable?: #t))
 
   ;; Sleep tool
@@ -449,10 +449,10 @@
                    parameters: (list
                                 (make-parameter-spec
                                  name: 'seconds
-                                 type: :number
+                                 type: ':number
                                  required?: #t
                                  description: "Number of seconds to sleep"))
-                   category: :builtin))
+                   category: ':builtin))
 
   ;; Current time tool
   (register-tool! registry
@@ -462,7 +462,7 @@
                      (time->seconds (current-time)))
                    description: "Get current Unix timestamp"
                    parameters: '()
-                   category: :builtin
+                   category: ':builtin
                    cacheable?: #f))
 
   ;; UUID generator tool
@@ -473,7 +473,7 @@
                      (uuid->string (make-uuid)))
                    description: "Generate a new UUID"
                    parameters: '()
-                   category: :builtin
+                   category: ':builtin
                    cacheable?: #f))
 
   ;; Hash tool
@@ -486,10 +486,10 @@
                    parameters: (list
                                 (make-parameter-spec
                                  name: 'text
-                                 type: :string
+                                 type: ':string
                                  required?: #t
                                  description: "Text to hash"))
-                   category: :builtin
+                   category: ':builtin
                    cacheable?: #t))
 
   registry)
@@ -501,25 +501,25 @@
 (def (serialize-tool tool)
   "Serialize tool to hash"
   (hash
-   'id (tool-id tool)
-   'name (tool-name tool)
-   'description (tool-description tool)
-   'parameters (map serialize-parameter-spec (tool-parameters tool))
-   'category (symbol->string (tool-category tool))
-   'async (tool-async? tool)
-   'cacheable (tool-cacheable? tool)
-   'timeout (tool-timeout tool)
-   'metadata (hash->list (tool-metadata tool))
-   'created_at (tool-created-at tool)))
+   ('id (tool-id tool))
+   ('name (tool-name tool))
+   ('description (tool-description tool))
+   ('parameters (map serialize-parameter-spec (tool-parameters tool)))
+   ('category (symbol->string (tool-category tool)))
+   ('async (tool-async? tool))
+   ('cacheable (tool-cacheable? tool))
+   ('timeout (tool-timeout tool))
+   ('metadata (hash->list (tool-metadata tool)))
+   ('created_at (tool-created-at tool))))
 
 (def (serialize-parameter-spec spec)
   "Serialize parameter specification"
   (hash
-   'name (symbol->string (parameter-spec-name spec))
-   'type (symbol->string (parameter-spec-type spec))
-   'required (parameter-spec-required? spec)
-   'default (parameter-spec-default spec)
-   'description (parameter-spec-description spec)))
+   ('name (symbol->string (parameter-spec-name spec)))
+   ('type (symbol->string (parameter-spec-type spec)))
+   ('required (parameter-spec-required? spec))
+   ('default (parameter-spec-default spec))
+   ('description (parameter-spec-description spec))))
 
 ;;; ============================================================================
 ;;; Utility Functions
@@ -577,15 +577,15 @@
    parameters: (list
                 (make-parameter-spec
                  name: 'a
-                 type: :number
+                 type: ':number
                  required?: #t
                  description: "First number")
                 (make-parameter-spec
                  name: 'b
-                 type: :number
+                 type: ':number
                  required?: #t
                  description: "Second number"))
-   category: :custom
+   category: ':custom
    cacheable?: #t))
 
 ;; Register custom tool

@@ -10,13 +10,28 @@
 (export #t)
 
 (import
-  :gerbil/gambit/threads
+  :std/misc/threads
   :std/sugar
+  :std/format
+  :std/sort
   :std/srfi/1
   :std/srfi/13
   :std/misc/hash
   :std/misc/uuid
-  ./elixir-bridge)
+  :o/agent/elixir-bridge)
+
+;;; ============================================================================
+;;; Helper Functions
+;;; ============================================================================
+
+;;; Helper function to convert association list to hash table
+(def (list->hash lst)
+  "Convert association list to hash table"
+  (let ((h (hash)))
+    (for-each (lambda (pair)
+                (hash-put! h (car pair) (cdr pair)))
+              lst)
+    h))
 
 ;;; ============================================================================
 ;;; Memory Structure
@@ -59,43 +74,42 @@
 
 (def default-memory-config
   (hash
-   'short-term-capacity 100        ; Max items in short-term memory
-   'working-memory-capacity 10     ; Max items in working memory
-   'importance-threshold 0.5       ; Min importance for long-term storage
-   'consolidation-interval 300     ; Consolidation interval (seconds)
-   'embedding-dimensions 1536      ; Vector embedding dimensions
-   'enable-embeddings #f))         ; Enable vector embeddings (requires external service)
+   ('short-term-capacity 100)        ; Max items in short-term memory
+   ('working-memory-capacity 10)     ; Max items in working memory
+   ('importance-threshold 0.5)       ; Min importance for long-term storage
+   ('consolidation-interval 300)     ; Consolidation interval (seconds)
+   ('embedding-dimensions 1536)      ; Vector embedding dimensions
+   ('enable-embeddings #f)))         ; Enable vector embeddings (requires external service)
 
 ;;; ============================================================================
 ;;; Memory Creation
 ;;; ============================================================================
 
-(def (make-agent-memory-instance #!optional (config default-memory-config))
+(def (make-agent-memory-instance (config default-memory-config))
   "Create a new agent memory instance"
   (let ((now (time->seconds (current-time))))
     (make-agent-memory
-     id: (uuid->string (make-uuid))
-     short-term: '()
-     long-term: (hash)  ; Hash table for efficient lookup
-     working: '()
-     episodic: '()
-     semantic: (hash)
-     procedural: (hash)
-     metadata: (hash)
-     config: config
-     created-at: now
-     updated-at: now)))
+     (uuid->string (make-uuid))
+     '()
+     (hash)
+     '()
+     '()
+     (hash)
+     (hash)
+     (hash)
+     config
+     now
+     now)))
 
 ;;; ============================================================================
 ;;; Memory Block Creation
 ;;; ============================================================================
 
 (def (make-memory-block-instance type content
-                                 #!key
-                                 (importance 0.5)
-                                 (tags '())
-                                 (metadata (hash))
-                                 (embedding #f))
+                                 importance: (importance 0.5)
+                                 tags: (tags '())
+                                 metadata: (metadata (hash))
+                                 embedding: (embedding #f))
   "Create a new memory block"
   (make-memory-block
    id: (uuid->string (make-uuid))
@@ -127,13 +141,13 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'memory-add-short-term
-                     (hash 'memory_id (agent-memory-id memory)
-                           'block_id (memory-block-id block)
-                           'type (symbol->string (memory-block-type block))))
+                     (hash ('memory_id (agent-memory-id memory))
+                           ('block_id (memory-block-id block))
+                           ('type (symbol->string (memory-block-type block)))))
 
     block))
 
-(def (get-short-term-memory memory #!optional (limit 100))
+(def (get-short-term-memory memory (limit 100))
   "Get short-term memory (most recent first)"
   (take (agent-memory-short-term memory) limit))
 
@@ -164,10 +178,10 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'memory-add-long-term
-                     (hash 'memory_id (agent-memory-id memory)
-                           'block_id block-id
-                           'type (symbol->string (memory-block-type block))
-                           'importance (memory-block-importance block)))
+                     (hash ('memory_id (agent-memory-id memory))
+                           ('block_id block-id)
+                           ('type (symbol->string (memory-block-type block)))
+                           ('importance (memory-block-importance block))))
 
     block))
 
@@ -203,8 +217,8 @@
 
       ;; Log to WAL
       (elixir-wal-log! 'memory-remove-long-term
-                       (hash 'memory_id (agent-memory-id memory)
-                             'block_id block-id)))))
+                       (hash ('memory_id (agent-memory-id memory))
+                             ('block_id block-id))))))
 
 ;;; ============================================================================
 ;;; Working Memory Operations
@@ -259,9 +273,9 @@
 
     ;; Log consolidation
     (elixir-wal-log! 'memory-consolidation
-                     (hash 'memory_id (agent-memory-id memory)
-                           'num_consolidated (length important-blocks)
-                           'timestamp (time->seconds (current-time))))
+                     (hash ('memory_id (agent-memory-id memory))
+                           ('num_consolidated (length important-blocks))
+                           ('timestamp (time->seconds (current-time)))))
 
     (displayln (format "Consolidated ~a blocks to long-term memory"
                       (length important-blocks)))
@@ -272,7 +286,7 @@
 ;;; Memory Search
 ;;; ============================================================================
 
-(def (search-memory memory query #!key (type #f) (limit 10))
+(def (search-memory memory query type: (type #f) limit: (limit 10))
   "Search memory by content (simple text search)"
   (let* ((all-blocks (append
                       (agent-memory-short-term memory)
@@ -295,7 +309,7 @@
     (cond
      ((string? content)
       (string-contains content query))
-     ((hash? content)
+     ((hash-table? content)
       (hash-any? (lambda (k v)
                    (or (and (string? v) (string-contains v query))
                        (and (symbol? v) (string-contains (symbol->string v) query))))
@@ -316,7 +330,7 @@
 ;;; Semantic Search (Placeholder)
 ;;; ============================================================================
 
-(def (semantic-search memory query-embedding #!key (limit 10))
+(def (semantic-search memory query-embedding limit: (limit 10))
   "Search memory using vector similarity (placeholder)"
   ;; This is a placeholder. In a real implementation, this would:
   ;; 1. Generate embedding for query
@@ -363,7 +377,7 @@
 ;;; Memory Pruning
 ;;; ============================================================================
 
-(def (prune-memory! memory #!key (min-importance 0.3) (max-age-days 30))
+(def (prune-memory! memory min-importance: (min-importance 0.3) max-age-days: (max-age-days 30))
   "Prune low-importance and old memory blocks"
   (displayln "Pruning memory...")
 
@@ -399,17 +413,17 @@
 (def (memory-stats memory)
   "Get memory statistics"
   (hash
-   'id (agent-memory-id memory)
-   'short_term_count (length (agent-memory-short-term memory))
-   'long_term_count (hash-length (agent-memory-long-term memory))
-   'working_count (length (agent-memory-working memory))
-   'episodic_count (length (agent-memory-episodic memory))
-   'semantic_count (hash-length (agent-memory-semantic memory))
-   'procedural_count (hash-length (agent-memory-procedural memory))
-   'total_blocks (+ (length (agent-memory-short-term memory))
-                    (hash-length (agent-memory-long-term memory)))
-   'created_at (agent-memory-created-at memory)
-   'updated_at (agent-memory-updated-at memory)))
+   ('id (agent-memory-id memory))
+   ('short_term_count (length (agent-memory-short-term memory)))
+   ('long_term_count (hash-length (agent-memory-long-term memory)))
+   ('working_count (length (agent-memory-working memory)))
+   ('episodic_count (length (agent-memory-episodic memory)))
+   ('semantic_count (hash-length (agent-memory-semantic memory)))
+   ('procedural_count (hash-length (agent-memory-procedural memory)))
+   ('total_blocks (+ (length (agent-memory-short-term memory))
+                     (hash-length (agent-memory-long-term memory))))
+   ('created_at (agent-memory-created-at memory))
+   ('updated_at (agent-memory-updated-at memory))))
 
 ;;; ============================================================================
 ;;; Memory Serialization
@@ -418,34 +432,34 @@
 (def (serialize-memory memory)
   "Serialize memory to hash for checkpointing"
   (hash
-   'id (agent-memory-id memory)
-   'short_term (map serialize-memory-block (agent-memory-short-term memory))
-   'long_term (hash-map (lambda (k v) (cons k (serialize-memory-block v)))
-                        (agent-memory-long-term memory))
-   'working (map serialize-memory-block (agent-memory-working memory))
-   'episodic (map serialize-memory-block (agent-memory-episodic memory))
-   'semantic (hash-map (lambda (k v) (cons k (serialize-memory-block v)))
-                       (agent-memory-semantic memory))
-   'procedural (hash-map (lambda (k v) (cons k (serialize-memory-block v)))
-                         (agent-memory-procedural memory))
-   'metadata (hash->list (agent-memory-metadata memory))
-   'config (hash->list (agent-memory-config memory))
-   'created_at (agent-memory-created-at memory)
-   'updated_at (agent-memory-updated-at memory)))
+   ('id (agent-memory-id memory))
+   ('short_term (map serialize-memory-block (agent-memory-short-term memory)))
+   ('long_term (hash-map (lambda (k v) (cons k (serialize-memory-block v)))
+                        (agent-memory-long-term memory)))
+   ('working (map serialize-memory-block (agent-memory-working memory)))
+   ('episodic (map serialize-memory-block (agent-memory-episodic memory)))
+   ('semantic (hash-map (lambda (k v) (cons k (serialize-memory-block v)))
+                       (agent-memory-semantic memory)))
+   ('procedural (hash-map (lambda (k v) (cons k (serialize-memory-block v)))
+                         (agent-memory-procedural memory)))
+   ('metadata (hash->list (agent-memory-metadata memory)))
+   ('config (hash->list (agent-memory-config memory)))
+   ('created_at (agent-memory-created-at memory))
+   ('updated_at (agent-memory-updated-at memory))))
 
 (def (serialize-memory-block block)
   "Serialize memory block to hash"
   (hash
-   'id (memory-block-id block)
-   'type (symbol->string (memory-block-type block))
-   'content (memory-block-content block)
-   'embedding (memory-block-embedding block)
-   'importance (memory-block-importance block)
-   'access_count (memory-block-access-count block)
-   'last_accessed (memory-block-last-accessed block)
-   'tags (memory-block-tags block)
-   'metadata (hash->list (memory-block-metadata block))
-   'created_at (memory-block-created-at block)))
+   ('id (memory-block-id block))
+   ('type (symbol->string (memory-block-type block)))
+   ('content (memory-block-content block))
+   ('embedding (memory-block-embedding block))
+   ('importance (memory-block-importance block))
+   ('access_count (memory-block-access-count block))
+   ('last_accessed (memory-block-last-accessed block))
+   ('tags (memory-block-tags block))
+   ('metadata (hash->list (memory-block-metadata block)))
+   ('created_at (memory-block-created-at block))))
 
 (def (deserialize-memory data)
   "Deserialize memory from hash"

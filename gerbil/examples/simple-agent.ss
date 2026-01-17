@@ -6,16 +6,16 @@
 (export #t)
 
 (import
-  :gerbil/gambit/threads
+  :std/misc/threads
   :std/sugar
   :std/srfi/1
   :std/misc/hash
-  ../agent/core
-  ../agent/state
-  ../agent/memory
-  ../agent/tools
-  ../agent/dsl
-  ../agent/elixir-bridge)
+  :o/agent/core
+  :o/agent/state
+  :o/agent/memory
+  :o/agent/tools
+  :o/agent/dsl
+  :o/agent/elixir-bridge)
 
 ;;; ============================================================================
 ;;; Example 1: Simple Echo Agent

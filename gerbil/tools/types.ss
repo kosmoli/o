@@ -150,7 +150,7 @@
   (let ((errors '()))
     (hash-for-each
      (lambda (param-name param-def)
-       (unless (hash? param-def)
+       (unless (hash-table? param-def)
          (set! errors (cons (format "Parameter ~a must be a hash" param-name) errors)))
 
        (unless (hash-key? param-def 'type)
@@ -244,7 +244,7 @@
                   (unless (boolean? arg-value)
                     (set! errors (cons (format "Parameter ~a must be a boolean" arg-name) errors))))
                  ((:object)
-                  (unless (hash? arg-value)
+                  (unless (hash-table? arg-value)
                     (set! errors (cons (format "Parameter ~a must be an object" arg-name) errors))))
                  ((:array)
                   (unless (list? arg-value)

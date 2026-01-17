@@ -10,9 +10,9 @@
   :std/format
   :std/text/json
   :std/sort
-  ../database/client
-  ../message/manager
-  ./types)
+  :o/database/client
+  :o/message/manager
+  :o/tools/types)
 
 ;;; ============================================================================
 ;;; Tool Registry

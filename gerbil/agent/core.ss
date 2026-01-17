@@ -6,8 +6,9 @@
 (export #t)
 
 (import
-  :gerbil/gambit/threads
+  :std/misc/threads
   :std/sugar
+  :std/format
   :std/srfi/1
   :std/srfi/13
   :std/misc/hash
@@ -54,11 +55,10 @@
 ;;; ============================================================================
 
 (def (make-agent-instance
-      #!key
-      (name "Agent")
-      (version "0.1.0")
-      (config (hash))
-      (metadata (hash)))
+      name: (name "Agent")
+      version: (version "0.1.0")
+      config: (config (hash))
+      metadata: (metadata (hash)))
   "Create a new agent instance with default initialization"
   (let* ((agent-id (uuid->string (make-uuid)))
          (now (time->seconds (current-time))))
@@ -71,7 +71,7 @@
      tools: (hash)          ; Empty tools registry
      config: config
      metadata: metadata
-     lifecycle: :initializing
+     lifecycle: ':initializing
      created-at: now
      updated-at: now
      checkpoint-id: #f)))
@@ -102,10 +102,10 @@
 
     ;; Notify Elixir supervisor
     (elixir-send "lifecycle_change"
-                 (hash 'agent_id (agent-id agent)
-                       'old_state (symbol->string old-lifecycle)
-                       'new_state (symbol->string new-lifecycle)
-                       'timestamp (agent-updated-at agent)))))
+                 (hash ('agent_id (agent-id agent))
+                       ('old_state (symbol->string old-lifecycle))
+                       ('new_state (symbol->string new-lifecycle))
+                       ('timestamp (agent-updated-at agent))))))
 
 (def (valid-transition? from to)
   "Check if a lifecycle transition is valid"
@@ -123,7 +123,7 @@
 
 (def (agent-initialize! agent state-init memory-init)
   "Initialize agent with state and memory systems"
-  (unless (eq? (agent-lifecycle agent) :initializing)
+  (unless (eq? (agent-lifecycle agent) ':initializing)
     (error "Agent must be in :initializing state" (agent-lifecycle agent)))
 
   ;; Initialize state (from agent/state.ss)
@@ -133,7 +133,7 @@
   (set! (agent-memory agent) memory-init)
 
   ;; Transition to running
-  (agent-transition! agent :running)
+  (agent-transition! agent ':running)
 
   ;; Create initial checkpoint
   (agent-checkpoint! agent)
@@ -143,6 +143,15 @@
 ;;; ============================================================================
 ;;; Agent Checkpointing
 ;;; ============================================================================
+
+;;; Helper function to convert association list to hash table
+(def (list->hash lst)
+  "Convert association list to hash table"
+  (let ((h (hash)))
+    (for-each (lambda (pair)
+                (hash-put! h (car pair) (cdr pair)))
+              lst)
+    h))
 
 (def (agent-checkpoint! agent)
   "Create a checkpoint of the agent's current state"
@@ -155,22 +164,22 @@
 (def (serialize-agent agent)
   "Serialize agent to a hash for checkpointing"
   (hash
-   'id (agent-id agent)
-   'name (agent-name agent)
-   'version (agent-version agent)
-   'state (if (agent-state agent)
-              (serialize-state (agent-state agent))
-              #f)
-   'memory (if (agent-memory agent)
-               (serialize-memory (agent-memory agent))
-               #f)
-   'tools (hash->list (agent-tools agent))
-   'config (hash->list (agent-config agent))
-   'metadata (hash->list (agent-metadata agent))
-   'lifecycle (symbol->string (agent-lifecycle agent))
-   'created-at (agent-created-at agent)
-   'updated-at (agent-updated-at agent)
-   'checkpoint-id (agent-checkpoint-id agent)))
+   ('id (agent-id agent))
+   ('name (agent-name agent))
+   ('version (agent-version agent))
+   ('state (if (agent-state agent)
+               (serialize-state (agent-state agent))
+               #f))
+   ('memory (if (agent-memory agent)
+                (serialize-memory (agent-memory agent))
+                #f))
+   ('tools (hash->list (agent-tools agent)))
+   ('config (hash->list (agent-config agent)))
+   ('metadata (hash->list (agent-metadata agent)))
+   ('lifecycle (symbol->string (agent-lifecycle agent)))
+   ('created-at (agent-created-at agent))
+   ('updated-at (agent-updated-at agent))
+   ('checkpoint-id (agent-checkpoint-id agent))))
 
 (def (deserialize-agent data)
   "Deserialize agent from checkpoint data"
@@ -197,7 +206,7 @@
 ;;; Placeholder functions (will be implemented in respective modules)
 (def (serialize-state state)
   "Placeholder for state serialization"
-  (if state (hash 'placeholder #t) #f))
+  (if state (hash ('placeholder #t)) #f))
 
 (def (deserialize-state data)
   "Placeholder for state deserialization"
@@ -205,7 +214,7 @@
 
 (def (serialize-memory memory)
   "Placeholder for memory serialization"
-  (if memory (hash 'placeholder #t) #f))
+  (if memory (hash ('placeholder #t)) #f))
 
 (def (deserialize-memory data)
   "Placeholder for memory deserialization"
@@ -220,7 +229,7 @@
   (displayln (format "Restoring agent from checkpoint: ~a" checkpoint-id))
 
   ;; Request checkpoint from Elixir
-  (elixir-send "restore_checkpoint" (hash 'checkpoint_id checkpoint-id))
+  (elixir-send "restore_checkpoint" (hash ('checkpoint_id checkpoint-id)))
 
   ;; Wait for response
   (let ((response (wait-for-message "checkpoint_data" timeout: 30)))
@@ -242,12 +251,12 @@
     (agent-checkpoint! agent))
 
   ;; Transition to terminated
-  (agent-transition! agent :terminated)
+  (agent-transition! agent ':terminated)
 
   ;; Notify Elixir
   (elixir-send "agent_terminated"
-               (hash 'agent_id (agent-id agent)
-                     'timestamp (time->seconds (current-time)))))
+               (hash ('agent_id (agent-id agent))
+                     ('timestamp (time->seconds (current-time))))))
 
 ;;; ============================================================================
 ;;; Agent Evolution Support
@@ -255,34 +264,34 @@
 
 (def (agent-begin-evolution! agent)
   "Begin evolution process (transition to :evolving state)"
-  (unless (eq? (agent-lifecycle agent) :running)
+  (unless (eq? (agent-lifecycle agent) ':running)
     (error "Agent must be running to begin evolution" (agent-lifecycle agent)))
 
   ;; Create checkpoint before evolution
   (agent-checkpoint! agent)
 
   ;; Transition to evolving
-  (agent-transition! agent :evolving)
+  (agent-transition! agent ':evolving)
 
   ;; Notify Elixir to start shadow testing
   (elixir-send "begin_evolution"
-               (hash 'agent_id (agent-id agent)
-                     'checkpoint_id (agent-checkpoint-id agent)
-                     'timestamp (time->seconds (current-time)))))
+               (hash ('agent_id (agent-id agent))
+                     ('checkpoint_id (agent-checkpoint-id agent))
+                     ('timestamp (time->seconds (current-time))))))
 
 (def (agent-end-evolution! agent success?)
   "End evolution process (transition back to :running)"
-  (unless (eq? (agent-lifecycle agent) :evolving)
+  (unless (eq? (agent-lifecycle agent) ':evolving)
     (error "Agent must be evolving to end evolution" (agent-lifecycle agent)))
 
   ;; Transition back to running
-  (agent-transition! agent :running)
+  (agent-transition! agent ':running)
 
   ;; Notify Elixir
   (elixir-send "end_evolution"
-               (hash 'agent_id (agent-id agent)
-                     'success success?
-                     'timestamp (time->seconds (current-time)))))
+               (hash ('agent_id (agent-id agent))
+                     ('success success?)
+                     ('timestamp (time->seconds (current-time))))))
 
 ;;; ============================================================================
 ;;; Agent Suspension/Resumption
@@ -290,22 +299,22 @@
 
 (def (agent-suspend! agent)
   "Suspend agent execution"
-  (unless (eq? (agent-lifecycle agent) :running)
+  (unless (eq? (agent-lifecycle agent) ':running)
     (error "Only running agents can be suspended" (agent-lifecycle agent)))
 
   ;; Create checkpoint
   (agent-checkpoint! agent)
 
   ;; Transition to suspended
-  (agent-transition! agent :suspended))
+  (agent-transition! agent ':suspended))
 
 (def (agent-resume! agent)
   "Resume suspended agent"
-  (unless (eq? (agent-lifecycle agent) :suspended)
+  (unless (eq? (agent-lifecycle agent) ':suspended)
     (error "Only suspended agents can be resumed" (agent-lifecycle agent)))
 
   ;; Transition to running
-  (agent-transition! agent :running))
+  (agent-transition! agent ':running))
 
 ;;; ============================================================================
 ;;; Agent Metadata Management
@@ -316,7 +325,7 @@
   (hash-put! (agent-metadata agent) key value)
   (set! (agent-updated-at agent) (time->seconds (current-time))))
 
-(def (agent-get-metadata agent key #!optional (default #f))
+(def (agent-get-metadata agent key (default #f))
   "Get a metadata value"
   (hash-ref (agent-metadata agent) key default))
 
@@ -329,7 +338,7 @@
   (hash-put! (agent-config agent) key value)
   (set! (agent-updated-at agent) (time->seconds (current-time))))
 
-(def (agent-get-config agent key #!optional (default #f))
+(def (agent-get-config agent key (default #f))
   "Get a configuration value"
   (hash-ref (agent-config agent) key default))
 
@@ -340,23 +349,23 @@
 (def (agent-status agent)
   "Get current agent status as a hash"
   (hash
-   'id (agent-id agent)
-   'name (agent-name agent)
-   'version (agent-version agent)
-   'lifecycle (agent-lifecycle agent)
-   'created_at (agent-created-at agent)
-   'updated_at (agent-updated-at agent)
-   'checkpoint_id (agent-checkpoint-id agent)
-   'uptime (- (time->seconds (current-time)) (agent-created-at agent))))
+   ('id (agent-id agent))
+   ('name (agent-name agent))
+   ('version (agent-version agent))
+   ('lifecycle (agent-lifecycle agent))
+   ('created_at (agent-created-at agent))
+   ('updated_at (agent-updated-at agent))
+   ('checkpoint_id (agent-checkpoint-id agent))
+   ('uptime (- (time->seconds (current-time)) (agent-created-at agent)))))
 
 (def (agent-is-running? agent)
   "Check if agent is in running state"
-  (eq? (agent-lifecycle agent) :running))
+  (eq? (agent-lifecycle agent) ':running))
 
 (def (agent-is-evolving? agent)
   "Check if agent is in evolving state"
-  (eq? (agent-lifecycle agent) :evolving))
+  (eq? (agent-lifecycle agent) ':evolving))
 
 (def (agent-is-terminated? agent)
   "Check if agent is terminated"
-  (eq? (agent-lifecycle agent) :terminated))
+  (eq? (agent-lifecycle agent) ':terminated))

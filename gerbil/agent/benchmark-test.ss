@@ -9,14 +9,14 @@
   :std/misc/hash
   :std/format
   :std/test
-  :gerbil/llm/types
-  :gerbil/tools/types
-  :gerbil/tools/core
-  :gerbil/message/types
-  :gerbil/memory/types
-  ./types
-  ./executor
-  ./benchmark)
+  :o/llm/types
+  :o/tools/types
+  :o/tools/core
+  :o/message/types
+  :o/memory/types
+  :o/agent/types
+  :o/agent/executor
+  :o/agent/benchmark)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -263,7 +263,7 @@
                    memory-used: #f
                    metadata: (hash)))
       (def hash-result (benchmark-result->hash result))
-      (check (hash? hash-result))
+      (check (hash-table? hash-result))
       (check (equal? (hash-ref hash-result 'name) "test"))
       (check (= (hash-ref hash-result 'iterations) 10))
       (check (= (hash-ref hash-result 'total_time) 1.0)))))

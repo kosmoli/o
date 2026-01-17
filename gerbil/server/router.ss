@@ -10,7 +10,7 @@
   :std/misc/hash
   :std/srfi/13
   :std/format
-  ./http)
+  :o/server/http)
 
 ;;; ============================================================================
 ;;; Route Structures

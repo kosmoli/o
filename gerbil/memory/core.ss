@@ -9,8 +9,8 @@
   :std/misc/hash
   :std/format
   :std/text/json
-  ./types
-  ./blocks)
+  :o/memory/types
+  :o/memory/blocks)
 
 ;;; ============================================================================
 ;;; Memory Change Tracking

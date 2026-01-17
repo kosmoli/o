@@ -10,7 +10,7 @@
   :std/text/json
   :std/sugar
   :std/misc/hash
-  ./types)
+  :o/llm/types)
 
 ;;; ============================================================================
 ;;; Anthropic Messages API
@@ -216,11 +216,11 @@
 (def (anthropic-stop-reason->symbol reason-str)
   "Convert Anthropic stop reason to standard symbol"
   (cond
-   ((equal? reason-str "end_turn") :stop)
-   ((equal? reason-str "tool_use") :tool-calls)
-   ((equal? reason-str "max_tokens") :length)
-   ((equal? reason-str "stop_sequence") :stop)
-   (else :unknown)))
+   ((equal? reason-str "end_turn") ':stop)
+   ((equal? reason-str "tool_use") ':tool-calls)
+   ((equal? reason-str "max_tokens") ':length)
+   ((equal? reason-str "stop_sequence") ':stop)
+   (else ':unknown)))
 
 ;;; ============================================================================
 ;;; Convenience Functions

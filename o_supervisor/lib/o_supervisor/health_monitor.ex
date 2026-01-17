@@ -82,9 +82,9 @@ defmodule OSupervisor.HealthMonitor do
          {:ok, metrics_b, _} <- get_metrics_internal(state, instance_b) do
       
       comparison = %{
-        latency_diff: calculate_diff(metrics_a[:avg_latency], metrics_b[:avg_latency]),
-        error_rate_diff: calculate_diff(metrics_a[:error_rate], metrics_b[:error_rate]),
-        memory_diff: calculate_diff(metrics_a[:memory_usage], metrics_b[:memory_usage]),
+        latency_diff: calculate_diff(metrics_b[:avg_latency], metrics_a[:avg_latency]),
+        error_rate_diff: calculate_diff(metrics_b[:error_rate], metrics_a[:error_rate]),
+        memory_diff: calculate_diff(metrics_b[:memory_usage], metrics_a[:memory_usage]),
         throughput_diff: calculate_diff(metrics_b[:throughput], metrics_a[:throughput])
       }
       

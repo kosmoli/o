@@ -9,10 +9,10 @@
   :std/misc/hash
   :std/format
   :std/test
-  ../database/client
-  ./types
-  ./archival
-  ./semantic)
+  :o/database/client
+  :o/memory/types
+  :o/memory/archival
+  :o/memory/semantic)
 
 ;;; ============================================================================
 ;;; Test Setup
@@ -242,7 +242,7 @@
         (for-each
          (lambda (result)
            (check (search-result? result))
-           (check (hash? (search-result-entry result))))
+           (check (hash-table? (search-result-entry result))))
          reranked)))))
 
 ;;; ============================================================================
@@ -256,7 +256,7 @@
       (let ((manager (setup-test-manager)))
         (def queries '("software" "coffee" "documentation"))
         (def results (batch-semantic-search manager queries limit: 3))
-        (check (hash? results))
+        (check (hash-table? results))
         (check (= (hash-length results) 3))
         (for-each
          (lambda (query)

@@ -116,7 +116,7 @@ defmodule OSupervisor.TrafficSplitter do
     OSupervisor.GerbilManager.send_message(pid, message)
   end
 
-  defp record_comparison({main_response, main_time}, {shadow_response, shadow_time}) do
+  defp record_comparison({_main_response, main_time}, {_shadow_response, shadow_time}) do
     # Record metrics for comparison
     :telemetry.execute(
       [:o_supervisor, :traffic_splitter, :comparison],
