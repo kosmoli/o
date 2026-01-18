@@ -13,7 +13,7 @@
 ;;; ============================================================================
 
 (defstruct llm-message
-  (role      ; :user :assistant :system :tool
+  (role      ; 'user 'assistant 'system 'tool
    content   ; string or list of content blocks
    name      ; optional name (for tool messages)
    tool-calls ; optional list of tool-call structures
@@ -87,10 +87,10 @@
   (id           ; response ID
    model        ; model used
    message      ; llm-message
-   finish-reason ; :stop :tool-calls :length :content-filter
+   finish-reason ; 'stop 'tool-calls 'length 'content-filter
    usage        ; usage-stats structure
    created      ; timestamp
-   provider)    ; provider name (:openai :anthropic :groq :ollama)
+   provider)    ; provider name ('openai 'anthropic 'groq 'ollama)
   transparent: #t)
 
 (defstruct usage-stats
@@ -104,7 +104,7 @@
 ;;; ============================================================================
 
 (defstruct llm-error
-  (type      ; :api-error :rate-limit :invalid-request :timeout
+  (type      ; 'api-error 'rate-limit 'invalid-request 'timeout
    message   ; error message
    status    ; HTTP status code (if applicable)
    provider  ; provider name
@@ -182,7 +182,7 @@
 (def (valid-message? msg)
   "Check if message is valid"
   (and (llm-message? msg)
-       (member (llm-message-role msg) '(:user :assistant :system :tool))
+       (member (llm-message-role msg) '('user 'assistant 'system 'tool))
        (or (string? (llm-message-content msg))
            (list? (llm-message-content msg)))))
 
@@ -200,11 +200,11 @@
 (def (finish-reason->symbol reason-str)
   "Convert finish reason string to symbol"
   (cond
-   ((equal? reason-str "stop") ':stop)
-   ((equal? reason-str "tool_calls") ':tool-calls)
-   ((equal? reason-str "length") ':length)
-   ((equal? reason-str "content_filter") ':content-filter)
-   (else ':unknown)))
+   ((equal? reason-str "stop") 'stop)
+   ((equal? reason-str "tool_calls") 'tool-calls)
+   ((equal? reason-str "length") 'length)
+   ((equal? reason-str "content_filter") 'content-filter)
+   (else 'unknown)))
 
 (def (extract-text-content msg)
   "Extract text content from message (handles both string and structured content)"

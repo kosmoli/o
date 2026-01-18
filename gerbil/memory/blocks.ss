@@ -2,14 +2,65 @@
 ;;;
 ;;; High-level memory block operations for core memory management.
 
+(package: o)
+
 (export #t)
 
 (import
   :std/sugar
   :std/misc/hash
   :std/format
-  :o/database/client
+  :std/misc/uuid
+  :std/srfi/19
   :o/memory/types)
+
+;;; ============================================================================
+;;; Database Stub Functions (placeholder until socket layer is implemented)
+;;; ============================================================================
+
+(def (db-create-memory-block agent-id params)
+  "Create memory block (stub - returns mock data)"
+  (let ((ht (make-hash-table)))
+    (hash-put! ht 'id (uuid-generate))
+    (hash-put! ht 'agent_id agent-id)
+    (hash-put! ht 'label (hash-ref params 'label))
+    (hash-put! ht 'value (hash-ref params 'value))
+    (hash-put! ht 'is_template (hash-ref params 'is_template #f))
+    (hash-put! ht 'is_readonly (hash-ref params 'is_readonly #f))
+    (hash-put! ht 'created_at (time->seconds (current-time)))
+    (hash-put! ht 'updated_at (time->seconds (current-time)))
+    ht))
+
+(def (db-get-memory-blocks agent-id)
+  "Get all memory blocks for agent (stub - returns empty list)"
+  '())
+
+(def (db-update-memory-block agent-id label value)
+  "Update memory block (stub - returns success)"
+  (let ((ht (make-hash-table)))
+    (hash-put! ht 'success #t)
+    ht))
+
+(def (db-delete-memory-block agent-id label)
+  "Delete memory block (stub - returns success)"
+  (let ((ht (make-hash-table)))
+    (hash-put! ht 'success #t)
+    ht))
+
+(def (db-connect!)
+  "Connect to database (stub - no-op)"
+  (displayln "Database connect (stub)"))
+
+(def (block-template-labels)
+  "Get standard block template labels"
+  '("persona" "human"))
+
+(def (get-block-template label)
+  "Get block template content"
+  (case label
+    ((persona) "You are a helpful AI assistant.")
+    ((human) "The user I am assisting.")
+    (else "")))
 
 ;;; ============================================================================
 ;;; Memory Block Manager
@@ -21,51 +72,53 @@
    cache-enabled) ; Is caching enabled?
   transparent: #t)
 
-(def (make-block-manager agent-id #!key (cache-enabled #t))
+(def (create-block-manager agent-id . rest)
   "Create a new block manager for an agent"
-  (make-block-manager
-   agent-id: agent-id
-   cache: (hash)
-   cache-enabled: cache-enabled))
+  (let ((cache-enabled (if (null? rest) #t (car rest))))
+    (make-block-manager
+     agent-id
+     (make-hash-table)
+     cache-enabled)))
 
 ;;; ============================================================================
 ;;; Block Creation
 ;;; ============================================================================
 
-(def (block-create! manager label value
-                    #!key
-                    (is-template #f)
-                    (is-readonly #f)
-                    (validate? #t))
+(def (block-create! manager label value . rest)
   "Create a new memory block"
+  (let ((is-template (if (null? rest) #f (car rest)))
+        (is-readonly (if (or (null? rest) (null? (cdr rest))) #f (cadr rest)))
+        (validate? (if (or (null? rest) (null? rest) (null? (caddr rest))) #t (car (caddr rest))))
+    ;; Validate block parameters if requested
+    (when validate?
+      (let ((params (let ((ht (make-hash-table)))
+        (hash-put! ht 'label label)
+        (hash-put! ht 'value value)
+        ht)))
+        (let ((result (validate-block-params params)))
+          (unless (car result)
+            (error "Invalid block parameters" (cdr result))))))
 
-  ;; Validate block parameters if requested
-  (when validate?
-    (let ((params (hash 'label label 'value value)))
-      (let ((result (validate-block-params params)))
-        (unless (car result)
-          (error "Invalid block parameters" errors: (cdr result))))))
+    ;; Create block via database
+    (let ((block (db-create-memory-block (block-manager-agent-id manager)
+                                           (let ((ht (make-hash-table)))
+                                             (hash-put! ht 'label label)
+                                             (hash-put! ht 'value value)
+                                             (hash-put! ht 'is_template is-template)
+                                             (hash-put! ht 'is_readonly is-readonly)
+                                             ht))))
 
-  ;; Create block via database
-  (let ((block (db-create-memory-block (block-manager-agent-id manager)
-                                       (hash 'label label
-                                             'value value
-                                             'is_template is-template
-                                             'is_readonly is-readonly))))
+      ;; Add to cache
+      (when (block-manager-cache-enabled manager)
+        (block-cache-put! manager label block))
 
-    ;; Add to cache
-    (when (block-manager-cache-enabled manager)
-      (block-cache-put! manager label block))
-
-    (displayln (format "Block created: ~a" label))
-    block))
+      (displayln (format "Block created: ~a" label))
+      block)))
 
 (def (block-create-from-template! manager label)
   "Create block from template"
   (let ((template (get-block-template label)))
-    (block-create! manager label template
-                  is-template: #t
-                  is-readonly: #f)))
+    (block-create! manager label template #t #f)))
 
 (def (block-ensure-exists! manager label)
   "Ensure block exists, create from template if not"
@@ -92,7 +145,7 @@
       ;; No cache, query database
       (let ((blocks (db-get-memory-blocks (block-manager-agent-id manager))))
         (find (lambda (b) (equal? (hash-ref b 'label) label))
-              blocks))))
+              blocks)))))
 
 (def (block-get-all manager)
   "Get all memory blocks"
@@ -123,35 +176,36 @@
 ;;; Block Update
 ;;; ============================================================================
 
-(def (block-update! manager label value #!key (validate? #t))
+(def (block-update! manager label value . rest)
   "Update memory block value"
+  (let ((validate? (if (null? rest) #t (car rest))))
+    ;; Check if block is read-only
+    (let ((block (block-get manager label)))
+      (when (and block (is-readonly-block? block))
+        (error "Cannot update read-only block")))
 
-  ;; Check if block is read-only
-  (let ((block (block-get manager label)))
-    (when (and block (is-readonly-block? block))
-      (error "Cannot update read-only block" label: label)))
+    ;; Validate value if requested
+    (when validate?
+      (unless (string? value)
+        (error "Value must be a string")))
 
-  ;; Validate value if requested
-  (when validate?
-    (unless (string? value)
-      (error "Value must be a string")))
+    ;; Update block via database
+    (db-update-memory-block (block-manager-agent-id manager) label value)
 
-  ;; Update block via database
-  (db-update-memory-block (block-manager-agent-id manager) label value)
+    ;; Update cache
+    (when (block-manager-cache-enabled manager)
+      (block-cache-invalidate! manager label))
 
-  ;; Update cache
-  (when (block-manager-cache-enabled manager)
-    (block-cache-invalidate! manager label))
+    (displayln (format "Block updated: ~a" label))))
 
-  (displayln (format "Block updated: ~a" label)))
-
-(def (block-append! manager label text #!key (separator "\n"))
+(def (block-append! manager label text . rest)
   "Append text to block value"
-  (let ((current (block-get-value manager label)))
-    (if current
-        (let ((new-value (string-append current separator text)))
-          (block-update! manager label new-value))
-        (error "Block not found" label: label))))
+  (let ((separator (if (null? rest) "\n" (car rest))))
+    (let ((current (block-get-value manager label)))
+      (if current
+          (let ((new-value (string-append current separator text)))
+            (block-update! manager label new-value))
+          (error "Block not found" label)))))
 
 (def (block-replace! manager label old-text new-text)
   "Replace text in block value"
@@ -159,7 +213,7 @@
     (if current
         (let ((new-value (string-replace current old-text new-text)))
           (block-update! manager label new-value))
-        (error "Block not found" label: label))))
+        (error "Block not found" label))))
 
 (def (block-set-readonly! manager label readonly?)
   "Set block read-only status"
@@ -178,19 +232,19 @@
 
 (def (block-delete! manager label)
   "Delete memory block"
-
   ;; Check if block is standard block
   (when (standard-block? label)
-    (error "Cannot delete standard block" label: label))
+    (error "Cannot delete standard block" label))
 
   ;; Check if block is read-only
   (let ((block (block-get manager label)))
     (when (and block (is-readonly-block? block))
-      (error "Cannot delete read-only block" label: label)))
+      (error "Cannot delete read-only block" label)))
 
   ;; Delete block via database
-  ;; Note: db-delete-memory-block not implemented yet
-  ;; For now, we'll just remove from cache
+  (db-delete-memory-block (block-manager-agent-id manager) label)
+
+  ;; Remove from cache
   (when (block-manager-cache-enabled manager)
     (block-cache-invalidate! manager label))
 
@@ -209,8 +263,10 @@
   "Validate block"
   (let ((block (block-get manager label)))
     (if block
-        (validate-block-params (hash 'label label
-                                     'value (hash-ref block 'value)))
+        (validate-block-params (let ((ht (make-hash-table)))
+          (hash-put! ht 'label label)
+          (hash-put! ht 'value (hash-ref block 'value))
+          ht))
         (cons #f (list "Block not found")))))
 
 (def (block-validate-all manager)
@@ -221,8 +277,10 @@
     (for-each
      (lambda (block)
        (let ((result (validate-block-params
-                      (hash 'label (hash-ref block 'label)
-                            'value (hash-ref block 'value)))))
+                      (let ((ht (make-hash-table)))
+                        (hash-put! ht 'label (hash-ref block 'label))
+                        (hash-put! ht 'value (hash-ref block 'value))
+                        ht))))
          (unless (car result)
            (set! errors (cons (cons (hash-ref block 'label) (cdr result))
                              errors)))))
@@ -268,12 +326,12 @@
                                 blocks)))
 
       (make-core-memory
-       persona: (if persona-block (hash-ref persona-block 'value) "")
-       human: (if human-block (hash-ref human-block 'value) "")
-       custom: (list->hash
-                (map (lambda (b)
-                       (cons (hash-ref b 'label) (hash-ref b 'value)))
-                     custom-blocks))))))
+       (if persona-block (hash-ref persona-block 'value) "")
+       (if human-block (hash-ref human-block 'value) "")
+       (list->hash
+        (map (lambda (b)
+               (cons (hash-ref b 'label) (hash-ref b 'value)))
+             custom-blocks))))))
 
 (def (core-memory-set! manager memory)
   "Set core memory structure"
@@ -291,24 +349,19 @@
          (block-create! manager label value)))
    (core-memory-custom memory)))
 
-(def (core-memory-initialize! manager
-                              #!key
-                              (persona #f)
-                              (human #f))
+(def (core-memory-initialize! manager . rest)
   "Initialize core memory with default or provided values"
-  ;; Create persona block
-  (block-create! manager "persona"
-                (or persona (get-block-template "persona"))
-                is-template: #t)
+  (let ((persona (if (null? rest) #f (car rest)))
+        (human (if (or (null? rest) (null? (cdr rest))) #f (cadr rest))))
+    ;; Create persona block
+    (block-create! manager "persona"
+                  (or persona (get-block-template "persona"))
+                  #t #f)
 
-  ;; Create human block
-  (block-create! manager "human"
-                (or human (get-block-template "human"))
-                is-template: #t))
-
-;;; ============================================================================
-;;; Block Search
-;;; ============================================================================
+    ;; Create human block
+    (block-create! manager "human"
+                  (or human (get-block-template "human"))
+                  #t #f)))
 
 (def (block-search manager query)
   "Search blocks by content"
@@ -347,24 +400,28 @@
 
 (def (block-get-stats manager)
   "Get block statistics"
-  (hash
-   'total_blocks (block-count manager)
-   'standard_blocks (block-count-standard manager)
-   'custom_blocks (block-count-custom manager)
-   'total_size (block-total-size manager)))
+  (let ((ht (make-hash-table)))
+    (hash-put! ht 'total_blocks (block-count manager))
+    (hash-put! ht 'standard_blocks (block-count-standard manager))
+    (hash-put! ht 'custom_blocks (block-count-custom manager))
+    (hash-put! ht 'total_size (block-total-size manager))
+    ht))
 
 ;;; ============================================================================
 ;;; Block Export/Import
 ;;; ============================================================================
 
-(def (block-export manager #!key (format 'json))
+(def (block-export manager . rest)
   "Export all blocks"
-  (let ((blocks (block-get-all manager)))
+  (let ((format (if (null? rest) 'json (car rest)))
+        (blocks (block-get-all manager)))
     (case format
       ((json)
        (json-object->string
-        (hash 'agent_id (block-manager-agent-id manager)
-              'blocks blocks)))
+        (let ((ht (make-hash-table)))
+          (hash-put! ht 'agent_id (block-manager-agent-id manager))
+          (hash-put! ht 'blocks blocks)
+          ht)))
 
       ((text)
        (string-join
@@ -410,18 +467,18 @@
   (let ((value (block-get-value manager from-label)))
     (if value
         (block-create! manager to-label value)
-        (error "Source block not found" label: from-label))))
-
-;;; ============================================================================
-;;; Example Usage (commented out)
-;;; ============================================================================
+        (error "Source block not found" from-label))))
 
 #|
+;;; ============================================================================
+;;; Example Usage
+;;; ============================================================================
+
 ;; Connect to database
 (db-connect!)
 
 ;; Create block manager
-(def manager (make-block-manager agent-id))
+(def manager (create-block-manager agent-id))
 
 ;; Initialize core memory
 (core-memory-initialize! manager
@@ -434,7 +491,7 @@
               is-readonly: #f)
 
 ;; Get block
-(def block (block-get manager "persona"))
+(def block (block-get manager "persona")
 (displayln (format "Persona: ~a" (hash-ref block 'value)))
 
 ;; Update block
@@ -448,14 +505,14 @@
 (displayln (format "Persona: ~a" (core-memory-persona memory)))
 
 ;; Search blocks
-(def results (block-search manager "helpful"))
+(def results (block-search manager "helpful")
 (displayln (format "Found ~a blocks" (length results)))
 
 ;; Get statistics
-(def stats (block-get-stats manager))
+(def stats (block-get-stats manager)
 (displayln (format "Total blocks: ~a" (hash-ref stats 'total_blocks)))
 
 ;; Export blocks
-(def export (block-export manager format: 'json))
+(def export (block-export manager format: 'json)
 (displayln export)
 |#

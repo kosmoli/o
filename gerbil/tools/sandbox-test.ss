@@ -100,7 +100,7 @@
                       start-time: (current-seconds)
                       timeout-time: (+ (current-seconds) 10)
                       config: (make-default-sandbox-config)
-                      status: :running
+                      status: 'running
                       result: #f
                       error: #f))
       (check (validate-execution-time execution)))))
@@ -117,7 +117,9 @@
       (def config (make-default-sandbox-config))
       (def execution (sandbox-execute-tool dispatcher
                                           "send_message"
-                                          (hash 'message "Test message")
+                                          (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test message")
+  ht)
                                           test-agent-id
                                           config: config))
       (check (sandbox-execution? execution))
@@ -129,7 +131,9 @@
       (def config (make-strict-sandbox-config))
       (def execution (sandbox-execute-tool dispatcher
                                           "archival_memory_insert"
-                                          (hash 'content "Test")
+                                          (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test")
+  ht)
                                           test-agent-id
                                           config: config))
       (check (sandbox-execution-failed? execution))
@@ -140,7 +144,7 @@
       (def config (make-default-sandbox-config))
       (def execution (sandbox-execute-tool dispatcher
                                           "send_message"
-                                          (hash)  ; Missing required 'message'
+                                          (make-hash-table)  ; Missing required 'message'
                                           test-agent-id
                                           config: config))
       (check (sandbox-execution? execution)))
@@ -150,7 +154,9 @@
       (def config (make-default-sandbox-config))
       (def execution (sandbox-execute-tool dispatcher
                                           "send_message"
-                                          (hash 'message "Test")
+                                          (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test")
+  ht)
                                           test-agent-id
                                           config: config))
       (check (sandbox-execution-succeeded? execution))
@@ -181,7 +187,9 @@
       (def sandboxed (make-sandboxed-dispatcher dispatcher))
       (def execution (sandboxed-dispatcher-call-tool sandboxed
                                                     "send_message"
-                                                    (hash 'message "Test")
+                                                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test")
+  ht)
                                                     test-agent-id))
       (check (sandbox-execution-succeeded? execution)))
 
@@ -192,11 +200,15 @@
       ;; Execute multiple tools
       (sandboxed-dispatcher-call-tool sandboxed
                                      "send_message"
-                                     (hash 'message "Test 1")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test 1")
+  ht)
                                      test-agent-id)
       (sandboxed-dispatcher-call-tool sandboxed
                                      "send_message"
-                                     (hash 'message "Test 2")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test 2")
+  ht)
                                      test-agent-id)
 
       ;; Check history
@@ -210,11 +222,15 @@
       ;; Execute some tools
       (sandboxed-dispatcher-call-tool sandboxed
                                      "send_message"
-                                     (hash 'message "Test 1")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test 1")
+  ht)
                                      test-agent-id)
       (sandboxed-dispatcher-call-tool sandboxed
                                      "send_message"
-                                     (hash 'message "Test 2")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test 2")
+  ht)
                                      test-agent-id)
 
       ;; Get statistics
@@ -237,7 +253,7 @@
                       start-time: (- (current-seconds) 5)
                       timeout-time: (+ (current-seconds) 10)
                       config: (make-default-sandbox-config)
-                      status: :completed
+                      status: 'completed
                       result: #f
                       error: #f))
       (def duration (sandbox-execution-duration execution))
@@ -248,7 +264,9 @@
       (def config (make-default-sandbox-config))
       (def execution (sandbox-execute-tool dispatcher
                                           "send_message"
-                                          (hash 'message "Test")
+                                          (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test")
+  ht)
                                           test-agent-id
                                           config: config))
       (def hash-repr (sandbox-execution->hash execution))
@@ -263,7 +281,7 @@
                       start-time: (current-seconds)
                       timeout-time: (+ (current-seconds) 10)
                       config: (make-default-sandbox-config)
-                      status: :completed
+                      status: 'completed
                       result: #f
                       error: #f))
       (check (sandbox-execution-succeeded? succeeded))
@@ -275,7 +293,7 @@
                       start-time: (current-seconds)
                       timeout-time: (+ (current-seconds) 10)
                       config: (make-default-sandbox-config)
-                      status: :timeout
+                      status: 'timeout
                       result: #f
                       error: "Timeout"))
       (check (not (sandbox-execution-succeeded? timed-out)))
@@ -287,7 +305,7 @@
                    start-time: (current-seconds)
                    timeout-time: (+ (current-seconds) 10)
                    config: (make-default-sandbox-config)
-                   status: :error
+                   status: 'error
                    result: #f
                    error: "Error"))
       (check (not (sandbox-execution-succeeded? failed)))
@@ -308,14 +326,18 @@
       ;; Execute send_message
       (def msg-execution (sandboxed-dispatcher-call-tool sandboxed
                                                         "send_message"
-                                                        (hash 'message "Hello!")
+                                                        (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Hello!")
+  ht)
                                                         test-agent-id))
       (check (sandbox-execution-succeeded? msg-execution))
 
       ;; Execute conversation_search
       (def search-execution (sandboxed-dispatcher-call-tool sandboxed
                                                            "conversation_search"
-                                                           (hash 'query "test")
+                                                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "test")
+  ht)
                                                            test-agent-id))
       (check (sandbox-execution-succeeded? search-execution)))
 
@@ -326,15 +348,19 @@
       ;; Execute core_memory_append
       (def append-execution (sandboxed-dispatcher-call-tool sandboxed
                                                            "core_memory_append"
-                                                           (hash 'name "persona"
-                                                                 'content "Test")
+                                                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "Test")
+  ht)
                                                            test-agent-id))
       (check (sandbox-execution-succeeded? append-execution))
 
       ;; Execute archival_memory_insert
       (def insert-execution (sandboxed-dispatcher-call-tool sandboxed
                                                            "archival_memory_insert"
-                                                           (hash 'content "Test memory")
+                                                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test memory")
+  ht)
                                                            test-agent-id))
       (check (sandbox-execution-succeeded? insert-execution)))
 
@@ -346,7 +372,9 @@
       ;; Try to execute blocked tool
       (def execution (sandboxed-dispatcher-call-tool sandboxed
                                                     "archival_memory_insert"
-                                                    (hash 'content "Test")
+                                                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test")
+  ht)
                                                     test-agent-id))
       (check (sandbox-execution-failed? execution)))
 
@@ -357,11 +385,15 @@
       ;; Execute successful tools
       (sandboxed-dispatcher-call-tool sandboxed
                                      "send_message"
-                                     (hash 'message "Test 1")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test 1")
+  ht)
                                      test-agent-id)
       (sandboxed-dispatcher-call-tool sandboxed
                                      "send_message"
-                                     (hash 'message "Test 2")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Test 2")
+  ht)
                                      test-agent-id)
 
       ;; Get statistics

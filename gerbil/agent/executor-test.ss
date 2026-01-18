@@ -27,14 +27,18 @@
   "Create mock LLM client for testing"
   (lambda (method . args)
     (case method
-      ((:chat)
+      (('chat)
        ;; Return mock LLM response
        (make-llm-response
         content: "This is a test response"
         tool-calls: '()
-        usage: (hash 'prompt_tokens 10 'completion_tokens 20 'total_tokens 30)
+        usage: (let ((ht (make-hash-table)))
+  (hash-put! ht 'prompt_tokens 10)
+  (hash-put! ht 'completion_tokens 20)
+  (hash-put! ht 'total_tokens 30)
+  ht)
         finish-reason: "stop"
-        metadata: (hash)))
+        metadata: (make-hash-table)))
       (else
        (error "Unknown method" method)))))
 
@@ -46,37 +50,41 @@
                               (make-tool-definition
                                name: "test_tool"
                                description: "Test tool"
-                               parameters: (hash 'input (hash 'type :string 'required #t))
+                               parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'input (hash 'type 'string 'required #t))
+  ht)
                                handler: (lambda (args ctx)
                                          (make-success-result
-                                          (hash 'output (hash-ref args 'input))))
-                               category: :custom
+                                          (let ((ht (make-hash-table)))
+  (hash-put! ht 'output (hash-ref args 'input))
+  ht)))
+                               category: 'custom
                                requires-approval: #f
-                               metadata: (hash)))
+                               metadata: (make-hash-table)))
     dispatcher))
 
 (def (make-mock-message-manager)
   "Create mock message manager for testing"
   (lambda (method . args)
     (case method
-      ((:create-message)
+      (('create-message)
        ;; Return mock message
        (make-message
         id: "msg-123"
         agent-id: test-agent-id
-        role: :user
+        role: 'user
         content: "Test message"
         timestamp: (current-seconds)
-        metadata: (hash)))
+        metadata: (make-hash-table)))
       (else
        (error "Unknown method" method)))))
 
 (def (make-mock-memory-manager)
   "Create mock memory manager for testing"
-  (let ((blocks (hash)))
+  (let ((blocks (make-hash-table)))
     (lambda (method . args)
       (case method
-        ((:get-block)
+        (('get-block)
          (let ((agent-id (car args))
                (block-name (cadr args)))
            (hash-ref blocks block-name
@@ -87,7 +95,7 @@
                      template: #f
                      limit: 1000
                      metadata: (hash)))))
-        ((:update-block)
+        (('update-block)
          (let ((agent-id (car args))
                (block-name (cadr args))
                (value (caddr args)))
@@ -123,7 +131,7 @@
    step-history: '()
    current-step: 0
    start-time: (current-seconds)
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Step Executor Tests
@@ -144,7 +152,9 @@
                  test-agent-id
                  0
                  step-type-user-message
-                 (hash 'content "Hello")))
+                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Hello")
+  ht)))
       (def result (execute-step executor context step))
       (check (step-completed? result))
       (check (hash-table? (execution-step-output result)))
@@ -157,7 +167,7 @@
                  test-agent-id
                  0
                  step-type-llm-inference
-                 (hash)))
+                 (make-hash-table)))
       (def result (execute-step executor context step))
       (check (step-completed? result))
       (check (hash-table? (execution-step-output result)))
@@ -172,8 +182,10 @@
                  test-agent-id
                  0
                  step-type-tool-call
-                 (hash 'tool_name "test_tool"
-                       'arguments (hash 'input "test"))))
+                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool_name "test_tool")
+  (hash-put! ht 'arguments (hash 'input "test"))
+  ht)))
       (def result (execute-step executor context step))
       (check (step-completed? result))
       (check (hash-table? (execution-step-output result)))
@@ -187,9 +199,11 @@
                  test-agent-id
                  0
                  step-type-memory-update
-                 (hash 'operation :append
-                       'block_name "persona"
-                       'content "Additional info")))
+                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'operation 'append)
+  (hash-put! ht 'block_name "persona")
+  (hash-put! ht 'content "Additional info")
+  ht)))
       (def result (execute-step executor context step))
       (check (step-completed? result))
       (check (hash-table? (execution-step-output result)))
@@ -203,10 +217,12 @@
                  test-agent-id
                  0
                  step-type-memory-update
-                 (hash 'operation :replace
-                       'block_name "persona"
-                       'old_content "Test"
-                       'new_content "Updated")))
+                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'operation 'replace)
+  (hash-put! ht 'block_name "persona")
+  (hash-put! ht 'old_content "Test")
+  (hash-put! ht 'new_content "Updated")
+  ht)))
       (def result (execute-step executor context step))
       (check (step-completed? result))
       (check (hash-table? (execution-step-output result)))
@@ -220,7 +236,9 @@
                  test-agent-id
                  0
                  step-type-system
-                 (hash 'action "test")))
+                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'action "test")
+  ht)))
       (def result (execute-step executor context step))
       (check (step-completed? result))
       (check (hash-table? (execution-step-output result))))
@@ -232,7 +250,7 @@
                  test-agent-id
                  0
                  step-type-system
-                 (hash)))
+                 (make-hash-table)))
       (def result (execute-step executor context step))
       (check (number? (execution-step-duration result)))
       (check (>= (execution-step-duration result) 0)))
@@ -246,13 +264,13 @@
                  agent-id: test-agent-id
                  step-number: 0
                  timestamp: (current-seconds)
-                 type: :invalid-type
-                 input: (hash)
+                 type: 'invalid-type
+                 input: (make-hash-table)
                  output: #f
                  status: step-status-pending
                  duration: #f
                  error: #f
-                 metadata: (hash)))
+                 metadata: (make-hash-table)))
       (def result (execute-step executor context step))
       (check (step-failed? result))
       (check (string? (execution-step-error result))))))
@@ -270,7 +288,7 @@
       (check (list? messages))
       (check (> (length messages) 0))
       ;; First message should be system message
-      (check (eq? (llm-message-role (car messages)) :system)))
+      (check (eq? (llm-message-role (car messages)) 'system)))
 
     (test-case "Build system message"
       (def config (make-default-agent-config test-agent-id "Test Agent"))
@@ -281,7 +299,7 @@
                     value: "I am helpful"
                     template: #f
                     limit: 1000
-                    metadata: (hash))))
+                    metadata: (make-hash-table))))
       (def msg (build-system-message config blocks))
       (check (string? msg))
       (check (string-contains msg "helpful")))
@@ -334,7 +352,9 @@
               test-agent-id
               0
               step-type-user-message
-              (hash 'content "Hello"))))
+              (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Hello")
+  ht))))
       (def next-step (determine-next-step executor context))
       (check (execution-step? next-step))
       (check (eq? (execution-step-type next-step) step-type-llm-inference)))
@@ -347,10 +367,12 @@
                      test-agent-id
                      0
                      step-type-llm-inference
-                     (hash)))
+                     (make-hash-table)))
       (execution-step-output-set! llm-step
-                                 (hash 'content "Response"
-                                       'tool_calls '()))
+                                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Response")
+  (hash-put! ht 'tool_calls '())
+  ht))
       (execution-context-step-history-set! context (list llm-step))
       (def next-step (determine-next-step executor context))
       ;; Should be #f (no more steps)
@@ -364,11 +386,13 @@
                      test-agent-id
                      0
                      step-type-llm-inference
-                     (hash)))
+                     (make-hash-table)))
       (execution-step-output-set! llm-step
-                                 (hash 'content "Response"
-                                       'tool_calls (list (hash 'tool_name "test_tool"
-                                                              'arguments (hash)))))
+                                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Response")
+  (hash-put! ht 'tool_calls (list (hash 'tool_name "test_tool"
+                                                              'arguments (hash))))
+  ht))
       (execution-context-step-history-set! context (list llm-step))
       (def next-step (determine-next-step executor context))
       (check (execution-step? next-step))
@@ -384,7 +408,9 @@
               test-agent-id
               0
               step-type-tool-call
-              (hash 'tool_name "test_tool"))))
+              (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool_name "test_tool")
+  ht))))
       (def next-step (determine-next-step executor context))
       (check (execution-step? next-step))
       (check (eq? (execution-step-type next-step) step-type-llm-inference)))
@@ -457,10 +483,10 @@
        (list (make-message
               id: "msg-1"
               agent-id: test-agent-id
-              role: :user
+              role: 'user
               content: "Hello"
               timestamp: (current-seconds)
-              metadata: (hash))))
+              metadata: (make-hash-table))))
       (def result (execute-agent executor context))
       (check (execution-result-success result)))
 
@@ -476,7 +502,7 @@
               value: "I am helpful"
               template: #f
               limit: 1000
-              metadata: (hash))))
+              metadata: (make-hash-table))))
       (def result (execute-agent executor context))
       (check (execution-result-success result)))))
 

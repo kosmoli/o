@@ -17,8 +17,7 @@
 ;;; ============================================================================
 
 (def (anthropic-messages
-      messages
-      #!key
+      messages . rest
       (model "claude-3-5-sonnet-20241022")
       (api-key #f)
       (max-tokens 4096)
@@ -51,17 +50,18 @@
             (filter-map
              (lambda (msg)
                (let ((m (if (llm-message? msg) msg (hash->message msg))))
-                 (if (eq? (llm-message-role m) :system)
+                 (if (eq? (llm-message-role m) 'system)
                      #f  ;; Skip system messages
                      (message->anthropic-format m))))
              messages))
 
            ;; Build request body
-           (body-data (hash
-                       'model model
-                       'messages api-messages
-                       'max_tokens max-tokens
-                       'temperature temperature))
+           (body-data (let ((ht (make-hash-table)))
+  (hash-put! ht 'model model)
+  (hash-put! ht 'messages api-messages)
+  (hash-put! ht 'max_tokens max-tokens)
+  (hash-put! ht 'temperature temperature)
+  ht))
 
            ;; Add optional parameters
            (_ (begin
@@ -79,10 +79,10 @@
         (if (= (request-status response) 200)
             (parse-anthropic-response response)
             (make-llm-error
-             type: :api-error
+             type: 'api-error
              message: "Anthropic API request failed"
              status: (request-status response)
-             provider: :anthropic
+             provider: 'anthropic
              details: (request-text response)))))))
 
 ;;; ============================================================================
@@ -97,47 +97,53 @@
 
     (cond
      ;; User message
-     ((eq? role :user)
-      (hash 'role "user"
-            'content content))
+     ((eq? role 'user)
+      (let ((ht (make-hash-table)))
+  (hash-put! ht 'role "user")
+  (hash-put! ht 'content content)
+  ht))
 
      ;; Assistant message with tool calls
-     ((and (eq? role :assistant) tool-calls)
-      (hash 'role "assistant"
-            'content (map tool-call->anthropic-format tool-calls)))
+     ((and (eq? role 'assistant) tool-calls)
+      (let ((ht (make-hash-table)))
+  (hash-put! ht 'role "assistant")
+  (hash-put! ht 'content (map tool-call->anthropic-format tool-calls))
+  ht))
 
      ;; Assistant message without tool calls
-     ((eq? role :assistant)
-      (hash 'role "assistant"
-            'content content))
+     ((eq? role 'assistant)
+      (let ((ht (make-hash-table)))
+  (hash-put! ht 'role "assistant")
+  (hash-put! ht 'content content)
+  ht))
 
      ;; Tool result message
-     ((eq? role :tool)
-      (hash 'role "user"
-            'content (list
+     ((eq? role 'tool)
+      (let ((ht (make-hash-table)))
+  (hash-put! ht 'role "user")
+  (hash-put! ht 'content (list
                       (hash
                        'type "tool_result"
-                       'tool_use_id (llm-message-tool-call-id msg)
-                       'content content))))
+                       'tool_use_id (llm-message-tool-call-id msg))
+                       'content content))
+  ht))
 
      (else
       (error "Unsupported message role for Anthropic" role)))))
 
 (def (tool-call->anthropic-format tc)
   "Convert tool-call to Anthropic tool_use format"
-  (hash
-   'type "tool_use"
-   'id (tool-call-id tc)
-   'name (function-call-name (tool-call-function tc))
-   'input (string->json-object (function-call-arguments (tool-call-function tc)))))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "tool_use")
+  (hash-put! ht 'id (tool-call-id tc))
+  ht))
 
 (def (tool-definition->anthropic-format td)
   "Convert tool-definition to Anthropic format"
   (let ((func (tool-definition-function td)))
-    (hash
-     'name (function-definition-name func)
-     'description (function-definition-description func)
-     'input_schema (function-definition-parameters func))))
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'name (function-definition-name func))
+  ht)))
 
 ;;; ============================================================================
 ;;; Response Parsing
@@ -173,7 +179,7 @@
              total-tokens: (+ (hash-ref usage 'input_tokens)
                              (hash-ref usage 'output_tokens)))
      created: (current-seconds)  ;; Anthropic doesn't provide timestamp
-     provider: :anthropic)))
+     provider: 'anthropic)))
 
 (def (parse-anthropic-content content-blocks)
   "Parse Anthropic content blocks into (text . tool-calls)
@@ -216,18 +222,17 @@
 (def (anthropic-stop-reason->symbol reason-str)
   "Convert Anthropic stop reason to standard symbol"
   (cond
-   ((equal? reason-str "end_turn") ':stop)
-   ((equal? reason-str "tool_use") ':tool-calls)
-   ((equal? reason-str "max_tokens") ':length)
-   ((equal? reason-str "stop_sequence") ':stop)
-   (else ':unknown)))
+   ((equal? reason-str "end_turn") ''stop)
+   ((equal? reason-str "tool_use") ''tool-calls)
+   ((equal? reason-str "max_tokens") ''length)
+   ((equal? reason-str "stop_sequence") ''stop)
+   (else ''unknown)))
 
 ;;; ============================================================================
 ;;; Convenience Functions
 ;;; ============================================================================
 
-(def (anthropic-simple prompt
-                      #!key
+(def (anthropic-simple prompt . rest
                       (model "claude-3-5-sonnet-20241022")
                       (system-prompt "You are a helpful assistant.")
                       (max-tokens 4096)
@@ -248,8 +253,7 @@
         (extract-text-content (llm-response-message response))
         (error "Anthropic request failed" response))))
 
-(def (anthropic-with-tools prompt tools
-                           #!key
+(def (anthropic-with-tools prompt tools . rest
                            (model "claude-3-5-sonnet-20241022")
                            (system-prompt "You are a helpful assistant.")
                            (max-tokens 4096)
@@ -290,13 +294,13 @@
   (make-tool-definition-instance
    "calculate"
    "Perform a mathematical calculation"
-   (hash
-    'type "object"
-    'properties (hash
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "object")
+  (hash-put! ht 'properties (hash
                  'expression (hash
                               'type "string"
-                              'description "Mathematical expression to evaluate"))
-    'required '("expression"))))
+                              'description "Mathematical expression to evaluate")))
+  ht)))
 
 (def response (anthropic-with-tools
                "What is 25 * 4?"

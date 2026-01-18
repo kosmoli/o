@@ -17,8 +17,7 @@
 ;;; ============================================================================
 
 (def (groq-chat-completion
-      messages
-      #!key
+      messages . rest
       (model "llama-3.3-70b-versatile")
       (api-key #f)
       (temperature 0.7)
@@ -54,10 +53,11 @@
                  messages))
 
            ;; Build request body
-           (body-data (hash
-                       'model model
-                       'messages api-messages
-                       'temperature temperature))
+           (body-data (let ((ht (make-hash-table)))
+  (hash-put! ht 'model model)
+  (hash-put! ht 'messages api-messages)
+  (hash-put! ht 'temperature temperature)
+  ht))
 
            ;; Add optional parameters
            (_ (begin
@@ -77,10 +77,10 @@
         (if (= (request-status response) 200)
             (parse-groq-response response)
             (make-llm-error
-             type: :api-error
+             type: 'api-error
              message: "Groq API request failed"
              status: (request-status response)
-             provider: :groq
+             provider: 'groq
              details: (request-text response)))))))
 
 ;;; ============================================================================
@@ -112,14 +112,13 @@
              completion-tokens: (hash-ref usage 'completion_tokens)
              total-tokens: (hash-ref usage 'total_tokens))
      created: created
-     provider: :groq)))
+     provider: 'groq)))
 
 ;;; ============================================================================
 ;;; Convenience Functions
 ;;; ============================================================================
 
-(def (groq-simple prompt
-                  #!key
+(def (groq-simple prompt . rest
                   (model "llama-3.3-70b-versatile")
                   (system-prompt "You are a helpful assistant.")
                   (api-key #f))
@@ -139,8 +138,7 @@
         (extract-text-content (llm-response-message response))
         (error "Groq request failed" response))))
 
-(def (groq-with-tools prompt tools
-                      #!key
+(def (groq-with-tools prompt tools . rest
                       (model "llama-3.3-70b-versatile")
                       (system-prompt "You are a helpful assistant.")
                       (api-key #f))
@@ -172,13 +170,13 @@
   (make-tool-definition-instance
    "calculate"
    "Perform a mathematical calculation"
-   (hash
-    'type "object"
-    'properties (hash
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "object")
+  (hash-put! ht 'properties (hash
                  'expression (hash
                               'type "string"
-                              'description "Mathematical expression to evaluate"))
-    'required '("expression"))))
+                              'description "Mathematical expression to evaluate")))
+  ht)))
 
 (def response (groq-with-tools
                "What is 25 * 4?"

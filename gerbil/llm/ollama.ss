@@ -17,8 +17,7 @@
 ;;; ============================================================================
 
 (def (ollama-chat-completion
-      messages
-      #!key
+      messages . rest
       (model "llama3.2:latest")
       (endpoint "http://localhost:11434")
       (temperature 0.7)
@@ -28,7 +27,7 @@
 
    Parameters:
    - messages: list of llm-message structures or hashes
-   - model: model name (default: llama3.2:latest)
+   - model: model name (default: llama3.2'latest)
    - endpoint: Ollama server endpoint (default: http://localhost:11434)
    - temperature: sampling temperature (0-2)
    - max-tokens: maximum tokens to generate
@@ -47,11 +46,12 @@
                messages))
 
          ;; Build request body
-         (body-data (hash
-                     'model model
-                     'messages api-messages
-                     'stream #f
-                     'options (hash 'temperature temperature)))
+         (body-data (let ((ht (make-hash-table)))
+  (hash-put! ht 'model model)
+  (hash-put! ht 'messages api-messages)
+  (hash-put! ht 'stream #f)
+  (hash-put! ht 'options (hash 'temperature temperature))
+  ht))
 
          ;; Add optional parameters
          (_ (begin
@@ -70,10 +70,10 @@
       (if (= (request-status response) 200)
           (parse-ollama-response response)
           (make-llm-error
-           type: :api-error
+           type: 'api-error
            message: "Ollama API request failed"
            status: (request-status response)
-           provider: :ollama
+           provider: 'ollama
            details: (request-text response))))))
 
 ;;; ============================================================================
@@ -81,8 +81,7 @@
 ;;; ============================================================================
 
 (def (ollama-generate
-      prompt
-      #!key
+      prompt . rest
       (model "llama3.2:latest")
       (endpoint "http://localhost:11434")
       (temperature 0.7)
@@ -92,7 +91,7 @@
 
    Parameters:
    - prompt: user prompt string
-   - model: model name (default: llama3.2:latest)
+   - model: model name (default: llama3.2'latest)
    - endpoint: Ollama server endpoint
    - temperature: sampling temperature
    - max-tokens: maximum tokens to generate
@@ -103,11 +102,12 @@
   (let* ((headers '(("Content-Type" . "application/json")))
 
          ;; Build request body
-         (body-data (hash
-                     'model model
-                     'prompt prompt
-                     'stream #f
-                     'options (hash 'temperature temperature)))
+         (body-data (let ((ht (make-hash-table)))
+  (hash-put! ht 'model model)
+  (hash-put! ht 'prompt prompt)
+  (hash-put! ht 'stream #f)
+  (hash-put! ht 'options (hash 'temperature temperature))
+  ht))
 
          ;; Add optional parameters
          (_ (begin
@@ -125,10 +125,10 @@
       (if (= (request-status response) 200)
           (parse-ollama-generate-response response)
           (make-llm-error
-           type: :api-error
+           type: 'api-error
            message: "Ollama API request failed"
            status: (request-status response)
-           provider: :ollama
+           provider: 'ollama
            details: (request-text response))))))
 
 ;;; ============================================================================
@@ -152,13 +152,13 @@
      id: (string-append "ollama-" (number->string (current-seconds)))
      model: model
      message: (hash->message message-hash)
-     finish-reason: (if done :stop :unknown)
+     finish-reason: (if done 'stop 'unknown)
      usage: (make-usage-stats
              prompt-tokens: prompt-eval-count
              completion-tokens: eval-count
              total-tokens: (+ prompt-eval-count eval-count))
      created: (current-seconds)
-     provider: :ollama)))
+     provider: 'ollama)))
 
 (def (parse-ollama-generate-response response)
   "Parse Ollama generate API response into llm-response structure"
@@ -176,20 +176,19 @@
      id: (string-append "ollama-" (number->string (current-seconds)))
      model: model
      message: (make-assistant-message response-text)
-     finish-reason: (if done :stop :unknown)
+     finish-reason: (if done 'stop 'unknown)
      usage: (make-usage-stats
              prompt-tokens: prompt-eval-count
              completion-tokens: eval-count
              total-tokens: (+ prompt-eval-count eval-count))
      created: (current-seconds)
-     provider: :ollama)))
+     provider: 'ollama)))
 
 ;;; ============================================================================
 ;;; Convenience Functions
 ;;; ============================================================================
 
-(def (ollama-simple prompt
-                    #!key
+(def (ollama-simple prompt . rest
                     (model "llama3.2:latest")
                     (system-prompt "You are a helpful assistant.")
                     (endpoint "http://localhost:11434"))
@@ -209,8 +208,7 @@
         (extract-text-content (llm-response-message response))
         (error "Ollama request failed" response))))
 
-(def (ollama-with-tools prompt tools
-                        #!key
+(def (ollama-with-tools prompt tools . rest
                         (model "llama3.2:latest")
                         (system-prompt "You are a helpful assistant.")
                         (endpoint "http://localhost:11434"))
@@ -232,7 +230,7 @@
 ;;; Model Management
 ;;; ============================================================================
 
-(def (ollama-list-models #!key (endpoint "http://localhost:11434"))
+(def (ollama-list-models . rest (endpoint "http://localhost:11434"))
   "List available Ollama models
 
    Returns: list of model names"
@@ -247,7 +245,7 @@
         (error "Failed to list Ollama models"
                status: (request-status response)))))
 
-(def (ollama-pull-model model #!key (endpoint "http://localhost:11434"))
+(def (ollama-pull-model model . rest (endpoint "http://localhost:11434"))
   "Pull/download an Ollama model
 
    Parameters:
@@ -256,7 +254,10 @@
    Returns: #t on success"
 
   (let* ((headers '(("Content-Type" . "application/json")))
-         (body-data (hash 'name model 'stream #f))
+         (body-data (let ((ht (make-hash-table)))
+  (hash-put! ht 'name model)
+  (hash-put! ht 'stream #f)
+  ht))
          (body-string (json-object->string body-data))
          (pull-endpoint (string-append endpoint "/api/pull")))
 

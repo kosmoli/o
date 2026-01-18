@@ -17,8 +17,7 @@
 ;;; ============================================================================
 
 (def (openai-chat-completion
-      messages
-      #!key
+      messages . rest
       (model "gpt-4")
       (api-key #f)
       (temperature 0.7)
@@ -54,10 +53,11 @@
                  messages))
 
            ;; Build request body
-           (body-data (hash
-                       'model model
-                       'messages api-messages
-                       'temperature temperature))
+           (body-data (let ((ht (make-hash-table)))
+  (hash-put! ht 'model model)
+  (hash-put! ht 'messages api-messages)
+  (hash-put! ht 'temperature temperature)
+  ht))
 
            ;; Add optional parameters
            (_ (begin
@@ -77,10 +77,10 @@
         (if (= (request-status response) 200)
             (parse-openai-response response)
             (make-llm-error
-             type: :api-error
+             type: 'api-error
              message: "OpenAI API request failed"
              status: (request-status response)
-             provider: :openai
+             provider: 'openai
              details: (request-text response)))))))
 
 ;;; ============================================================================
@@ -112,22 +112,21 @@
              completion-tokens: (hash-ref usage 'completion_tokens)
              total-tokens: (hash-ref usage 'total_tokens))
      created: created
-     provider: :openai)))
+     provider: 'openai)))
 
 ;;; ============================================================================
 ;;; Streaming Support (Future)
 ;;; ============================================================================
 
 ;; TODO: Implement streaming support
-;; (def (openai-chat-completion-stream messages #!key ...)
+;; (def (openai-chat-completion-stream messages . rest ...)
 ;;   ...)
 
 ;;; ============================================================================
 ;;; Convenience Functions
 ;;; ============================================================================
 
-(def (openai-simple prompt
-                     #!key
+(def (openai-simple prompt . rest
                      (model "gpt-4")
                      (system-prompt "You are a helpful assistant.")
                      (api-key #f))
@@ -147,8 +146,7 @@
         (extract-text-content (llm-response-message response))
         (error "OpenAI request failed" response))))
 
-(def (openai-with-tools prompt tools
-                        #!key
+(def (openai-with-tools prompt tools . rest
                         (model "gpt-4")
                         (system-prompt "You are a helpful assistant.")
                         (api-key #f))
@@ -180,13 +178,13 @@
   (make-tool-definition-instance
    "calculate"
    "Perform a mathematical calculation"
-   (hash
-    'type "object"
-    'properties (hash
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "object")
+  (hash-put! ht 'properties (hash
                  'expression (hash
                               'type "string"
-                              'description "Mathematical expression to evaluate"))
-    'required '("expression"))))
+                              'description "Mathematical expression to evaluate")))
+  ht)))
 
 (def response (openai-with-tools
                "What is 25 * 4?"

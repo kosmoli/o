@@ -22,7 +22,7 @@
 (def (setup-test-manager)
   "Create test archival manager"
   (make-archival-manager test-agent-id
-                        llm-provider: :openai
+                        llm-provider: 'openai
                         llm-model: "text-embedding-3-small"
                         cache-enabled: #t))
 
@@ -63,13 +63,12 @@
     (test-case "Insert batch entries"
       (let ((manager (setup-test-manager)))
         (def entries (archival-insert-batch! manager
-                                            (list (hash 'content "Entry 1"
-                                                       'importance 0.6
-                                                       'tags '("batch")
-                                                       'generate_embedding #f)
-                                                  (hash 'content "Entry 2"
-                                                       'importance 0.8
-                                                       'tags '("batch")
+                                            (list (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Entry 1")
+  (hash-put! ht 'importance 0.6)
+  (hash-put! ht 'tags '("batch"))
+  ht)
+                                                  (hash ('content "Entry 2") ('importance 0.8) ('tags '("batch"))
                                                        'generate_embedding #f))))
         (check (= (length entries) 2))))
 
@@ -270,7 +269,9 @@
         (def entry (archival-insert! manager "Original" generate-embedding?: #f))
         (def updated (archival-update! manager
                                       (hash-ref entry 'id)
-                                      (hash 'content "Updated")))
+                                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Updated")
+  ht)))
         (check (equal? (hash-ref updated 'content) "Updated"))))
 
     (test-case "Update entry importance"
@@ -371,7 +372,9 @@
     (test-case "Cache invalidated on update"
       (let ((manager (setup-test-manager)))
         (def entry (archival-insert! manager "Original" generate-embedding?: #f))
-        (archival-update! manager (hash-ref entry 'id) (hash 'content "Updated"))
+        (archival-update! manager (let ((ht (make-hash-table)))
+  (hash-put! ht 'id )
+  ht) (hash ('content "Updated")))
         ;; Cache should be invalidated, next get will fetch from DB
         (def retrieved (archival-get manager (hash-ref entry 'id)))
         (check (equal? (hash-ref retrieved 'content) "Updated"))))

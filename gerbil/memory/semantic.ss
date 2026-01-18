@@ -9,7 +9,11 @@
   :std/misc/hash
   :std/format
   :std/sort
-  :o/database/client
+;;
+  ;; ;; (
+  ;; :o/database/client (placeholder)) (placeholder)
+ (placeholder)
+
   :o/llm/client
   :o/memory/types
   :o/memory/archival)
@@ -78,8 +82,7 @@
 ;;; Semantic Search
 ;;; ============================================================================
 
-(def (semantic-search manager query
-                      #!key
+(def (semantic-search manager query . rest
                       (limit 10)
                       (min-similarity 0.0))
   "Search archival memory using vector similarity
@@ -126,8 +129,7 @@
               ;; Return top N results
               (take sorted (min limit (length sorted))))))))))
 
-(def (semantic-search-by-embedding manager query-embedding
-                                   #!key
+(def (semantic-search-by-embedding manager query-embedding . rest
                                    (limit 10)
                                    (min-similarity 0.0))
   "Search archival memory using pre-computed embedding vector
@@ -182,8 +184,7 @@
    combined-score)  ; Combined score [0.0, 1.0]
   transparent: #t)
 
-(def (hybrid-search manager query
-                    #!key
+(def (hybrid-search manager query . rest
                     (limit 10)
                     (text-weight 0.3)
                     (vector-weight 0.7)
@@ -283,8 +284,7 @@
      ;; No match
      (else 0.0))))
 
-(def (hybrid-search-advanced manager query
-                             #!key
+(def (hybrid-search-advanced manager query . rest
                              (limit 10)
                              (text-weight 0.3)
                              (vector-weight 0.7)
@@ -360,8 +360,7 @@
 ;;; Search Result Ranking
 ;;; ============================================================================
 
-(def (rerank-results results
-                     #!key
+(def (rerank-results results . rest
                      (diversity-factor 0.0)
                      (recency-factor 0.0))
   "Re-rank search results with diversity and recency
@@ -411,8 +410,7 @@
 ;;; Batch Operations
 ;;; ============================================================================
 
-(def (batch-semantic-search manager queries
-                            #!key
+(def (batch-semantic-search manager queries . rest
                             (limit 10)
                             (min-similarity 0.0))
   "Perform semantic search for multiple queries
@@ -426,7 +424,7 @@
    Returns:
      Hash mapping queries to result lists"
 
-  (let ((results (hash)))
+  (let ((results (make-hash-table)))
     (for-each
      (lambda (query)
        (let ((query-results (semantic-search manager query
@@ -440,8 +438,7 @@
 ;;; Utilities
 ;;; ============================================================================
 
-(def (find-similar-entries manager entry-id
-                          #!key
+(def (find-similar-entries manager entry-id . rest
                           (limit 5)
                           (min-similarity 0.5))
   "Find entries similar to a given entry
@@ -469,8 +466,7 @@
                          (not (equal? (hash-ref result 'id) entry-id)))
                        results)))))))
 
-(def (cluster-entries-by-similarity entries
-                                    #!key
+(def (cluster-entries-by-similarity entries . rest
                                     (similarity-threshold 0.7))
   "Cluster entries by vector similarity
 
@@ -482,7 +478,7 @@
      List of clusters (each cluster is a list of entries)"
 
   (let ((clusters '())
-        (processed (hash)))
+        (processed (make-hash-table)))
 
     (for-each
      (lambda (entry)

@@ -21,34 +21,35 @@
 (def (home-handler req)
   "Home page handler"
   (make-json-response
-   (hash
-    'message "Welcome to Project O HTTP Server"
-    'version "0.1.0"
-    'endpoints (list
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Welcome to Project O HTTP Server")
+  (hash-put! ht 'version "0.1.0")
+  (hash-put! ht 'endpoints (list
                 "/health"
                 "/status"
                 "/api/v1/hello"
                 "/api/v1/echo"
                 "/api/v1/users"
-                "/api/v1/users/:id"))))
+                "/api/v1/users/:id"))
+  ht)))
 
 (def (hello-handler req)
   "Simple hello handler"
   (let ((name (get-query-param req "name")))
     (make-json-response
-     (hash
-      'message (if name
-                   (format "Hello, ~a!" name)
-                   "Hello, World!")))))
+     (let ((ht (make-hash-table)))
+  (hash-put! ht 'message (if name
+                   (format "Hello, ~a!" name))
+                   "Hello, World!")
+  ht))))
 
 (def (echo-handler req)
   "Echo back the request body"
   (if (http-request-json req)
       (make-json-response
-       (hash
-        'echo (http-request-json req)
-        'method (http-request-method req)
-        'path (http-request-path req)))
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'echo (http-request-json req))
+  ht))
       (make-error-response
        "Expected JSON body"
        status: 400)))
@@ -56,27 +57,30 @@
 (def (list-users-handler req)
   "List all users"
   (make-json-response
-   (hash
-    'users (list
-            (hash 'id 1 'name "Alice")
-            (hash 'id 2 'name "Bob")
-            (hash 'id 3 'name "Charlie")))))
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'users (list
+            (hash 'id 1 'name "Alice"))
+            (hash ('id 2) ('name "Bob"))
+            (hash ('id 3) ('name "Charlie")))
+  ht)))
 
 (def (get-user-handler req)
   "Get user by ID"
   (let ((id (get-path-param req 'id)))
     (make-json-response
-     (hash
-      'user (hash 'id id 'name (format "User ~a" id))))))
+     (let ((ht (make-hash-table)))
+  (hash-put! ht 'user (hash 'id id 'name (format "User ~a" id)))
+  ht))))
 
 (def (create-user-handler req)
   "Create new user"
   (if (http-request-json req)
       (let ((user-data (http-request-json req)))
         (make-json-response
-         (hash
-          'created #t
-          'user user-data)
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'created #t)
+  (hash-put! ht 'user user-data)
+  ht)
          status: 201))
       (make-error-response
        "Expected JSON body"
@@ -116,8 +120,7 @@
 ;;; Server Setup
 ;;; ============================================================================
 
-(def (start-example-server
-      #!key
+(def (start-example-server . rest
       (host "0.0.0.0")
       (port 8283))
   "Start example HTTP server"
@@ -160,7 +163,7 @@
     (displayln "  GET  /api/v1/hello        - Hello endpoint")
     (displayln "  POST /api/v1/echo         - Echo endpoint")
     (displayln "  GET  /api/v1/users        - List users")
-    (displayln "  GET  /api/v1/users/:id    - Get user")
+    (displayln "  GET  /api/v1/users/'id    - Get user")
     (displayln "  POST /api/v1/users        - Create user")
     (displayln "\nPress Ctrl+C to stop the server\n")
 

@@ -29,7 +29,7 @@
    description       ; Tool description
    parameters        ; Parameter specification
    function          ; Tool function
-   category          ; Tool category: ':builtin :custom :external
+   category          ; Tool category: ''builtin 'custom 'external
    async?            ; Whether tool is async
    cacheable?        ; Whether results can be cached
    timeout           ; Execution timeout (seconds)
@@ -45,7 +45,7 @@
   (id                ; Registry identifier
    tools             ; Hash table of tools (name -> tool)
    categories        ; Hash table of categories (category -> list of tool names)
-   cache             ; Result cache (hash table)
+   cache             ; Result cache (make-hash-table)
    execution-log     ; Execution history
    metadata          ; Registry metadata
    created-at        ; Creation timestamp
@@ -73,7 +73,7 @@
 
 (defstruct parameter-spec
   (name              ; Parameter name
-   type              ; Parameter type: ':string :number :boolean :object :array
+   type              ; Parameter type: ''string 'number 'boolean 'object 'array
    required?         ; Whether parameter is required
    default           ; Default value (if not required)
    description       ; Parameter description
@@ -89,11 +89,11 @@
   (let ((now (time->seconds (current-time))))
     (make-tool-registry
      id: (uuid->string (make-uuid))
-     tools: (hash)
-     categories: (hash)
-     cache: (hash)
+     tools: (make-hash-table)
+     categories: (make-hash-table)
+     cache: (make-hash-table)
      execution-log: '()
-     metadata: (hash)
+     metadata: (make-hash-table)
      created-at: now
      updated-at: now)))
 
@@ -104,11 +104,11 @@
 (def (make-tool-instance name function
                          description: (description "")
                          parameters: (parameters '())
-                         category: (category ':custom)
+                         category: (category ''custom)
                          async?: (async? #f)
                          cacheable?: (cacheable? #f)
                          timeout: (timeout 30)
-                         metadata: (metadata (hash)))
+                         metadata: (metadata (make-hash-table)))
   "Create a new tool"
   (make-tool
    id: (uuid->string (make-uuid))
@@ -145,9 +145,11 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'tool-register
-                     (hash ('registry_id (tool-registry-id registry))
-                           ('tool_name tool-name)
-                           ('category (symbol->string category))))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'registry_id (tool-registry-id registry))
+  (hash-put! ht 'tool_name tool-name)
+  (hash-put! ht 'category (symbol->string category))
+  ht))
 
     tool))
 
@@ -170,8 +172,10 @@
 
         ;; Log to WAL
         (elixir-wal-log! 'tool-unregister
-                         (hash ('registry_id (tool-registry-id registry))
-                               ('tool_name tool-name)))))))
+                         (let ((ht (make-hash-table)))
+  (hash-put! ht 'registry_id (tool-registry-id registry))
+  (hash-put! ht 'tool_name tool-name)
+  ht))))))
 
 ;;; ============================================================================
 ;;; Tool Lookup
@@ -227,12 +231,12 @@
 (def (validate-parameter-type value type)
   "Validate parameter type"
   (case type
-    ((':string) (string? value))
-    ((':number) (number? value))
-    ((':boolean) (boolean? value))
-    ((':object) (hash-table? value))
-    ((':array) (list? value))
-    ((':any) #t)
+    ((''string) (string? value))
+    ((''number) (number? value))
+    ((''boolean) (boolean? value))
+    ((''object) (hash-table? value))
+    ((''array) (list? value))
+    ((''any) #t)
     (else #f)))
 
 ;;; ============================================================================
@@ -283,9 +287,11 @@
 
             ;; Notify Elixir
             (elixir-send "tool_executed"
-                         (hash ('tool_name tool-name)
-                               ('success (tool-result-success? tool-result))
-                               ('duration duration)))
+                         (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool_name tool-name)
+  (hash-put! ht 'success (tool-result-success? tool-result))
+  (hash-put! ht 'duration duration)
+  ht))
 
             tool-result)))))
 
@@ -376,7 +382,7 @@
            (hash-remove! (tool-registry-cache registry) key))
          keys-to-remove))
       ;; Clear entire cache
-      (set! (tool-registry-cache registry) (hash))))
+      (set! (tool-registry-cache registry) (make-hash-table))))
 
 ;;; ============================================================================
 ;;; Execution Logging
@@ -432,10 +438,10 @@
                    parameters: (list
                                 (make-parameter-spec
                                  name: 'message
-                                 type: ':string
+                                 type: ''string
                                  required?: #t
                                  description: "Message to echo"))
-                   category: ':builtin
+                   category: ''builtin
                    cacheable?: #t))
 
   ;; Sleep tool
@@ -449,10 +455,10 @@
                    parameters: (list
                                 (make-parameter-spec
                                  name: 'seconds
-                                 type: ':number
+                                 type: ''number
                                  required?: #t
                                  description: "Number of seconds to sleep"))
-                   category: ':builtin))
+                   category: ''builtin))
 
   ;; Current time tool
   (register-tool! registry
@@ -462,7 +468,7 @@
                      (time->seconds (current-time)))
                    description: "Get current Unix timestamp"
                    parameters: '()
-                   category: ':builtin
+                   category: ''builtin
                    cacheable?: #f))
 
   ;; UUID generator tool
@@ -473,7 +479,7 @@
                      (uuid->string (make-uuid)))
                    description: "Generate a new UUID"
                    parameters: '()
-                   category: ':builtin
+                   category: ''builtin
                    cacheable?: #f))
 
   ;; Hash tool
@@ -486,10 +492,10 @@
                    parameters: (list
                                 (make-parameter-spec
                                  name: 'text
-                                 type: ':string
+                                 type: ''string
                                  required?: #t
                                  description: "Text to hash"))
-                   category: ':builtin
+                   category: ''builtin
                    cacheable?: #t))
 
   registry)
@@ -546,7 +552,7 @@
 (def (string-hash str)
   "Simple string hash function"
   (let loop ((chars (string->list str))
-             (hash 0))
+             (make-hash-table))
     (if (null? chars)
         hash
         (loop (cdr chars)
@@ -577,22 +583,25 @@
    parameters: (list
                 (make-parameter-spec
                  name: 'a
-                 type: ':number
+                 type: ''number
                  required?: #t
                  description: "First number")
                 (make-parameter-spec
                  name: 'b
-                 type: ':number
+                 type: ''number
                  required?: #t
                  description: "Second number"))
-   category: ':custom
+   category: ''custom
    cacheable?: #t))
 
 ;; Register custom tool
 (register-tool! my-registry calculate-sum-tool)
 
 ;; Execute tool
-(def result (execute-tool my-registry "calculate_sum" (hash 'a 5 'b 3)))
+(def result (execute-tool my-registry "calculate_sum" (let ((ht (make-hash-table)))
+  (hash-put! ht 'a 5)
+  (hash-put! ht 'b 3)
+  ht)))
 
 ;; Get tool stats
 (def stats (get-tool-stats my-registry "calculate_sum"))

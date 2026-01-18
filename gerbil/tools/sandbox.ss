@@ -65,7 +65,7 @@
    start-time            ; Execution start time
    timeout-time          ; Timeout deadline
    config                ; Sandbox configuration
-   status                ; Execution status (:running, :completed, :timeout, :error)
+   status                ; Execution status (:running, :completed, :timeout, 'error)
    result                ; Execution result
    error)                ; Error message if failed
   transparent: #t)
@@ -111,8 +111,7 @@
 ;;; Sandboxed Tool Execution
 ;;; ============================================================================
 
-(def (sandbox-execute-tool dispatcher tool-name arguments agent-id
-                           #!key
+(def (sandbox-execute-tool dispatcher tool-name arguments agent-id . rest
                            (config (make-default-sandbox-config)))
   "Execute tool in sandbox with resource limits
 
@@ -133,7 +132,7 @@
              start-time: (current-seconds)
              timeout-time: 0
              config: config
-             status: :error
+             status: 'error
              result: #f
              error: (format "Tool ~a is not allowed in sandbox" tool-name))))
 
@@ -147,7 +146,7 @@
                       start-time: start-time
                       timeout-time: timeout-time
                       config: config
-                      status: :running
+                      status: 'running
                       result: #f
                       error: #f)))
 
@@ -158,18 +157,18 @@
          ;; Check if execution completed within timeout
          (if (validate-execution-time execution)
              (begin
-               (sandbox-execution-status-set! execution :completed)
+               (sandbox-execution-status-set! execution 'completed)
                (sandbox-execution-result-set! execution call)
                execution)
              (begin
-               (sandbox-execution-status-set! execution :timeout)
+               (sandbox-execution-status-set! execution 'timeout)
                (sandbox-execution-error-set! execution
                  (format "Tool execution exceeded timeout of ~a seconds"
                         (sandbox-config-max-execution-time config)))
                execution)))
 
        (catch (e)
-         (sandbox-execution-status-set! execution :error)
+         (sandbox-execution-status-set! execution 'error)
          (sandbox-execution-error-set! execution
            (format "Tool execution error: ~a" (error-message e)))
          execution)))))
@@ -184,8 +183,7 @@
    execution-history)    ; History of sandbox executions
   transparent: #t)
 
-(def (make-sandboxed-dispatcher dispatcher
-                               #!key
+(def (make-sandboxed-dispatcher dispatcher . rest
                                (config (make-default-sandbox-config)))
   "Create sandboxed dispatcher
 
@@ -226,7 +224,7 @@
 
     execution))
 
-(def (sandboxed-dispatcher-get-history sandboxed-dispatcher #!key (limit 10))
+(def (sandboxed-dispatcher-get-history sandboxed-dispatcher . rest (limit 10))
   "Get sandbox execution history
 
    Args:
@@ -250,17 +248,19 @@
 
   (let ((history (sandboxed-dispatcher-execution-history sandboxed-dispatcher)))
     (let ((total (length history))
-          (completed (length (filter (lambda (e) (eq? (sandbox-execution-status e) :completed)) history)))
-          (timeout (length (filter (lambda (e) (eq? (sandbox-execution-status e) :timeout)) history)))
-          (error (length (filter (lambda (e) (eq? (sandbox-execution-status e) :error)) history))))
+          (completed (length (filter (lambda (e) (eq? (sandbox-execution-status e) 'completed)) history)))
+          (timeout (length (filter (lambda (e) (eq? (sandbox-execution-status e) 'timeout)) history)))
+          (error (length (filter (lambda (e) (eq? (sandbox-execution-status e) 'error)) history))))
 
-      (hash 'total total
-            'completed completed
-            'timeout timeout
-            'error error
-            'success_rate (if (> total 0)
+      (let ((ht (make-hash-table)))
+  (hash-put! ht 'total total)
+  (hash-put! ht 'completed completed)
+  (hash-put! ht 'timeout timeout)
+  (hash-put! ht 'error e)
+  (hash-put! ht 'success_rate (if (> total 0))
                              (/ (* completed 100.0) total)
-                             0.0)))))
+                             0.0)
+  ht))))
 
 ;;; ============================================================================
 ;;; Sandbox Utilities
@@ -275,7 +275,7 @@
    Returns:
      #t if succeeded, #f otherwise"
 
-  (eq? (sandbox-execution-status execution) :completed))
+  (eq? (sandbox-execution-status execution) 'completed))
 
 (def (sandbox-execution-timed-out? execution)
   "Check if sandbox execution timed out
@@ -286,7 +286,7 @@
    Returns:
      #t if timed out, #f otherwise"
 
-  (eq? (sandbox-execution-status execution) :timeout))
+  (eq? (sandbox-execution-status execution) 'timeout))
 
 (def (sandbox-execution-failed? execution)
   "Check if sandbox execution failed
@@ -297,7 +297,7 @@
    Returns:
      #t if failed, #f otherwise"
 
-  (eq? (sandbox-execution-status execution) :error))
+  (eq? (sandbox-execution-status execution) 'error))
 
 (def (sandbox-execution-duration execution)
   "Get execution duration in seconds
@@ -319,14 +319,9 @@
    Returns:
      Hash representation"
 
-  (hash 'tool_name (sandbox-execution-tool-name execution)
-        'start_time (sandbox-execution-start-time execution)
-        'duration (sandbox-execution-duration execution)
-        'status (symbol->string (sandbox-execution-status execution))
-        'result (if (sandbox-execution-succeeded? execution)
-                   (tool-call->hash (sandbox-execution-result execution))
-                   #f)
-        'error (sandbox-execution-error execution)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool_name (sandbox-execution-tool-name execution))
+  ht))
 
 ;;; ============================================================================
 ;;; Example Usage (commented out)
@@ -344,7 +339,9 @@
 ;; Execute tool in sandbox
 (def execution (sandboxed-dispatcher-call-tool sandboxed
                                               "send_message"
-                                              (hash 'message "Hello!")
+                                              (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Hello!")
+  ht)
                                               agent-id))
 
 ;; Check result
@@ -359,7 +356,9 @@
 ;; Try to execute blocked tool
 (def blocked-execution (sandboxed-dispatcher-call-tool strict-sandboxed
                                                       "archival_memory_insert"
-                                                      (hash 'content "Test")
+                                                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test")
+  ht)
                                                       agent-id))
 
 ;; Get execution statistics

@@ -25,7 +25,7 @@
 
   ;; With version: (defagent name version: "1.0" body ...)
   ((_ name version: ver body ...)
-   (defagent name version: ver config: (hash) body ...))
+   (defagent name version: ver config: (make-hash-table) body ...))
 
   ;; Full form with config
   ((_ name version: ver config: cfg
@@ -91,11 +91,9 @@
        body ...)
 
      (def name-tool-spec
-       (hash
-        'name (symbol->string 'name)
-        'description desc
-        'parameters param-spec
-        'function name)))))
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'name (symbol->string 'name))
+  ht)))))
 
 ;;; ============================================================================
 ;;; when-> - Conditional Pipeline Macro
@@ -315,10 +313,11 @@
               (evaluation (if new-code
                               (begin evaluate-body ...)
                               #f)))
-         (hash
-          'should_evolve should-evolve?
-          'new_code new-code
-          'evaluation evaluation))))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'should_evolve should-evolve?)
+  (hash-put! ht 'new_code new-code)
+  (hash-put! ht 'evaluation e)
+  ht))))))
 
 ;;; ============================================================================
 ;;; Pattern Matching for Perceptions
@@ -370,12 +369,14 @@
             (result (try
                      (tool-fn args ...)
                      (catch (e)
-                       (hash 'error (error-object->string e))))))
+                       (let ((ht (make-hash-table)))
+  (hash-put! ht 'error (error-object->string e))
+  ht)))))
        ;; Send result back
        (elixir-send "tool_result"
-                    (hash 'agent_id (agent-id agent)
-                          'tool_name tool-name
-                          'result result))))))
+                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'agent_id (agent-id agent))
+  ht))))))
 
 ;;; ============================================================================
 ;;; Conditional Evolution Triggers
@@ -400,7 +401,9 @@
 ;; Example 1: Define a simple agent
 (defagent my-agent
   version: "1.0.0"
-  config: (hash 'checkpoint-interval 300)
+  config: (let ((ht (make-hash-table)))
+  (hash-put! ht 'checkpoint-interval 300)
+  ht)
 
   (init
    (displayln "Initializing agent..."))
@@ -411,7 +414,10 @@
 
   (think context
    (displayln (format "Thinking about: ~a" context))
-   (hash 'action 'respond 'data context))
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'action 'respond)
+  (hash-put! ht 'data context)
+  ht))
 
   (act action
    (displayln (format "Acting: ~a" action))))

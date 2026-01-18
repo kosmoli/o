@@ -26,7 +26,9 @@
   (let* ((agent (make-agent-instance
                  name: "EchoAgent"
                  version: "1.0.0"
-                 config: (hash 'checkpoint-interval 300)))
+                 config: (let ((ht (make-hash-table)))
+  (hash-put! ht 'checkpoint-interval 300)
+  ht)))
          (state (make-agent-state-instance))
          (memory (make-agent-memory-instance)))
 
@@ -40,7 +42,7 @@
                  ;; Store in memory
                  (add-to-short-term! (agent-memory agent)
                                     (make-memory-block-instance
-                                     :episodic
+                                     'episodic
                                      (format "User said: ~a" input)
                                      importance: 0.5))
                  input))
@@ -50,8 +52,10 @@
                (lambda (agent context)
                  (displayln (format "Thinking about: ~a" context))
                  ;; Simple echo response
-                 (hash 'action 'respond
-                       'message (format "You said: ~a" context))))
+                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'action 'respond)
+  (hash-put! ht 'message (format "You said: ~a" context))
+  ht)))
 
     ;; Define act function
     (hash-put! (agent-metadata agent) 'act-fn
@@ -91,7 +95,7 @@
                         (state-set! state 'counter (+ current 1))
                         (+ current 1)))
                     description: "Increment the counter"
-                    category: :custom))
+                    category: 'custom))
 
     ;; Register decrement tool
     (register-tool! registry
@@ -102,7 +106,7 @@
                         (state-set! state 'counter (- current 1))
                         (- current 1)))
                     description: "Decrement the counter"
-                    category: :custom))
+                    category: 'custom))
 
     ;; Register get counter tool
     (register-tool! registry
@@ -111,7 +115,7 @@
                     (lambda ()
                       (state-get state 'counter))
                     description: "Get current counter value"
-                    category: :custom
+                    category: 'custom
                     cacheable?: #f))
 
     ;; Register reset tool
@@ -122,7 +126,7 @@
                       (state-set! state 'counter 0)
                       0)
                     description: "Reset counter to zero"
-                    category: :custom))
+                    category: 'custom))
 
     ;; Store registry in agent metadata
     (agent-set-metadata! agent 'tool-registry registry)
@@ -150,7 +154,7 @@
                  ;; Store input in memory
                  (add-to-short-term! (agent-memory agent)
                                     (make-memory-block-instance
-                                     :episodic
+                                     'episodic
                                      input
                                      importance: 0.7
                                      tags: '(user-input)))
@@ -163,9 +167,11 @@
                  (let ((similar-memories (search-memory (agent-memory agent)
                                                        context
                                                        limit: 3)))
-                   (hash 'action 'respond
-                         'context context
-                         'similar_memories (length similar-memories)))))
+                   (let ((ht (make-hash-table)))
+  (hash-put! ht 'action 'respond)
+  (hash-put! ht 'context context)
+  (hash-put! ht 'similar_memories (length similar-memories))
+  ht))))
 
     ;; Define act function
     (hash-put! (agent-metadata agent) 'act-fn
@@ -175,7 +181,7 @@
                    ;; Store response in memory
                    (add-to-short-term! (agent-memory agent)
                                       (make-memory-block-instance
-                                       :episodic
+                                       'episodic
                                        response
                                        importance: 0.6
                                        tags: '(agent-response)))
@@ -231,7 +237,9 @@
   (let* ((agent (make-agent-instance
                  name: "EvolvingAgent"
                  version: "1.0.0"
-                 config: (hash 'evolution-threshold 100)))
+                 config: (let ((ht (make-hash-table)))
+  (hash-put! ht 'evolution-threshold 100)
+  ht)))
          (state (make-agent-state-instance))
          (memory (make-agent-memory-instance)))
 
@@ -267,9 +275,11 @@
                      (agent-begin-evolution! agent))
 
                    ;; Return action
-                   (hash 'action 'process
-                         'request_count request-count
-                         'error_rate error-rate))))
+                   (let ((ht (make-hash-table)))
+  (hash-put! ht 'action 'process)
+  (hash-put! ht 'request_count request-count)
+  (hash-put! ht 'error_rate e)
+  ht))))
 
     ;; Define act function
     (hash-put! (agent-metadata agent) 'act-fn
@@ -368,16 +378,16 @@
 
     ;; Execute tools
     (displayln "\nExecuting tools:")
-    (execute-tool registry "increment" (hash))
-    (execute-tool registry "increment" (hash))
-    (execute-tool registry "increment" (hash))
+    (execute-tool registry "increment" (make-hash-table))
+    (execute-tool registry "increment" (make-hash-table))
+    (execute-tool registry "increment" (make-hash-table))
 
-    (let ((result (execute-tool registry "get_counter" (hash))))
+    (let ((result (execute-tool registry "get_counter" (make-hash-table))))
       (displayln (format "Counter value: ~a" (tool-result-result result))))
 
-    (execute-tool registry "decrement" (hash))
+    (execute-tool registry "decrement" (make-hash-table))
 
-    (let ((result (execute-tool registry "get_counter" (hash))))
+    (let ((result (execute-tool registry "get_counter" (make-hash-table))))
       (displayln (format "Counter value: ~a" (tool-result-result result))))
 
     ;; Display tool statistics
@@ -463,11 +473,11 @@
   (if (null? args)
       (run-all-demos)
       (case (string->symbol (car args))
-        ((echo) (demo-echo-agent))
-        ((counter) (demo-counter-agent))
-        ((memory) (demo-memory-agent))
-        ((evolving) (demo-evolving-agent))
-        ((all) (run-all-demos))
+        (('echo)  (demo-echo-agent))
+        (('counter)  (demo-counter-agent))
+        (('memory)  (demo-memory-agent))
+        (('evolving)  (demo-evolving-agent))
+        (('all)  (run-all-demos))
         (else
          (displayln "Usage: gxi simple-agent.ss [echo|counter|memory|evolving|all]")
          (displayln "  echo     - Run echo agent demo")

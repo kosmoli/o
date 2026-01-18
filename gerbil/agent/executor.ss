@@ -32,8 +32,7 @@
    metadata)             ; Additional metadata
   transparent: #t)
 
-(def (make-step-executor llm-client tool-dispatcher message-manager memory-manager
-                        #!key (max-retries 3))
+(def (make-step-executor llm-client tool-dispatcher message-manager memory-manager . rest (max-retries 3))
   "Create step executor
 
    Args:
@@ -52,7 +51,7 @@
    message-manager: message-manager
    memory-manager: memory-manager
    max-retries: max-retries
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Step Execution
@@ -77,15 +76,15 @@
      ;; Execute based on step type
      (let ((result
             (case (execution-step-type step)
-              ((:user-message)
+              (('user-message)
                (execute-user-message-step executor context step))
-              ((:llm-inference)
+              (('llm-inference)
                (execute-llm-inference-step executor context step))
-              ((:tool-call)
+              (('tool-call)
                (execute-tool-call-step executor context step))
-              ((:memory-update)
+              (('memory-update)
                (execute-memory-update-step executor context step))
-              ((:system)
+              (('system)
                (execute-system-step executor context step))
               (else
                (error "Unknown step type" (execution-step-type step))))))
@@ -119,12 +118,12 @@
     (let ((message (message-manager-create-message
                     (step-executor-message-manager executor)
                     agent-id: (execution-context-agent-id context)
-                    role: :user
+                    role: 'user
                     content: (hash-ref input 'content)
-                    metadata: (hash))))
-      (hash 'message_id (message-id message)
-            'content (message-content message)
-            'timestamp (message-timestamp message)))))
+                    metadata: (make-hash-table))))
+      (let ((ht (make-hash-table)))
+  (hash-put! ht 'message_id (message-id message))
+  ht))))
 
 (def (execute-llm-inference-step executor context step)
   "Execute LLM inference step
@@ -155,10 +154,9 @@
                     max-tokens: (hash-ref (agent-config-llm-config config) 'max_tokens 4096))))
 
     ;; Extract response content and tool calls
-    (hash 'content (llm-response-content response)
-          'tool_calls (llm-response-tool-calls response)
-          'usage (llm-response-usage response)
-          'finish_reason (llm-response-finish-reason response))))
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'content (llm-response-content response))
+  ht)))
 
 (def (execute-tool-call-step executor context step)
   "Execute tool call step
@@ -184,11 +182,11 @@
                  agent-id)))
 
       ;; Return tool call result
-      (hash 'tool_name tool-name
-            'arguments arguments
-            'status (tool-call-status call)
-            'result (tool-call-result call)
-            'error (tool-call-error call)))))
+      (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool_name tool-name)
+  (hash-put! ht 'arguments arguments)
+  (hash-put! ht 'status (tool-call-status call))
+  ht))))
 
 (def (execute-memory-update-step executor context step)
   "Execute memory update step
@@ -209,26 +207,30 @@
          (agent-id (execution-context-agent-id context)))
 
     (case operation
-      ((:append)
+      (('append)
        ;; Append to memory block
        (let ((block (memory-block-manager-get-block manager agent-id block-name)))
          (memory-block-manager-update-block! manager agent-id block-name
                                             (string-append (memory-block-value block) "\n" content))
-         (hash 'operation "append"
-               'block_name block-name
-               'content content)))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'operation "append")
+  (hash-put! ht 'block_name block-name)
+  (hash-put! ht 'content content)
+  ht)))
 
-      ((:replace)
+      (('replace)
        ;; Replace memory block content
        (let ((old-content (hash-ref input 'old_content))
              (new-content (hash-ref input 'new_content))
              (block (memory-block-manager-get-block manager agent-id block-name)))
          (let ((updated (string-replace (memory-block-value block) old-content new-content)))
            (memory-block-manager-update-block! manager agent-id block-name updated)
-           (hash 'operation "replace"
-                 'block_name block-name
-                 'old_content old-content
-                 'new_content new-content))))
+           (let ((ht (make-hash-table)))
+  (hash-put! ht 'operation "replace")
+  (hash-put! ht 'block_name block-name)
+  (hash-put! ht 'old_content old-content)
+  (hash-put! ht 'new_content new-content)
+  ht))))
 
       (else
        (error "Unknown memory operation" operation)))))
@@ -270,7 +272,7 @@
     ;; Add system message with persona and memory
     (set! messages
           (cons (make-llm-message
-                 role: :system
+                 role: 'system
                  content: (build-system-message config memory-blocks))
                 messages))
 
@@ -390,7 +392,7 @@
           output: "Max steps reached"
           error: #f
           duration: (- (current-seconds) start-time)
-          metadata: (hash)))
+          metadata: (make-hash-table)))
 
         ;; Continue execution
         (else
@@ -423,7 +425,7 @@
                           output: #f
                           error: (execution-step-error executed-step)
                           duration: (- (current-seconds) start-time)
-                          metadata: (hash)))
+                          metadata: (make-hash-table)))
                        ;; Step succeeded - continue
                        (loop (+ step-num 1)))))
 
@@ -438,7 +440,7 @@
                   output: "Execution complete"
                   error: #f
                   duration: (- (current-seconds) start-time)
-                  metadata: (hash))))))))
+                  metadata: (make-hash-table))))))))
 
      (catch (e)
        ;; Execution error
@@ -452,7 +454,7 @@
         output: #f
         error: (error-message e)
         duration: (- (current-seconds) start-time)
-        metadata: (hash))))))
+        metadata: (make-hash-table))))))
 
 (def (determine-next-step executor context)
   "Determine next step to execute
@@ -474,20 +476,20 @@
          (execution-context-agent-id context)
          0
          step-type-llm-inference
-         (hash))
+         (make-hash-table))
 
         ;; Check last step
         (let ((last-step (car history)))
           (case (execution-step-type last-step)
-            ((:user-message)
+            (('user-message)
              ;; After user message, do LLM inference
              (make-execution-step-record
               (execution-context-agent-id context)
               (+ (execution-step-step-number last-step) 1)
               step-type-llm-inference
-              (hash)))
+              (make-hash-table)))
 
-            ((:llm-inference)
+            (('llm-inference)
              ;; After LLM inference, check if there are tool calls
              (let ((output (execution-step-output last-step)))
                (if (and output (not (null? (hash-ref output 'tool_calls '()))))
@@ -501,13 +503,13 @@
                    ;; No tool calls - execution complete
                    #f)))
 
-            ((:tool-call)
+            (('tool-call)
              ;; After tool call, do another LLM inference
              (make-execution-step-record
               (execution-context-agent-id context)
               (+ (execution-step-step-number last-step) 1)
               step-type-llm-inference
-              (hash)))
+              (make-hash-table)))
 
             (else
              ;; Unknown step type - stop

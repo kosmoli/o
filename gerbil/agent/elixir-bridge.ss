@@ -32,11 +32,15 @@
 ;;; 
 ;;; Example:
 ;;;   (elixir-send "heartbeat" #t)
-;;;   (elixir-send "checkpoint" (hash 'state state-data))
+;;;   (elixir-send "checkpoint" (let ((ht (make-hash-table)))
+  (hash-put! ht 'state state-data)
+  ht))
 (def (elixir-send msg-type data)
-  (let* ((msg (hash ('type msg-type)
-                    ('data data)
-                    ('timestamp (time->seconds (current-time)))))
+  (let* ((msg (let ((ht (make-hash-table)))
+  (hash-put! ht 'type msg-type)
+  (hash-put! ht 'data data)
+  (hash-put! ht 'timestamp (time->seconds (current-time)))
+  ht))
          (packed (msgpack-encode msg))
          (len (u8vector-length packed)))
     ;; Write 4-byte length prefix (big-endian)
@@ -92,12 +96,16 @@
 ;;; Logs operation before execution for durability.
 ;;; 
 ;;; Example:
-;;;   (elixir-wal-log! 'memory-add (hash 'content "some text"))
+;;;   (elixir-wal-log! 'memory-add (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "some text")
+  ht))
 (def (elixir-wal-log! operation data)
   (elixir-send "wal_entry"
-               (hash ('operation (symbol->string operation))
-                     ('data data)
-                     ('timestamp (time->seconds (current-time))))))
+               (let ((ht (make-hash-table)))
+  (hash-put! ht 'operation (symbol->string operation))
+  (hash-put! ht 'data data)
+  (hash-put! ht 'timestamp (time->seconds (current-time)))
+  ht)))
 
 ;;; Start heartbeat thread
 ;;; 
@@ -141,24 +149,30 @@
 ;;; Override this in your agent implementation.
 #|
 (def (serialize-agent-state agent)
-  (hash ('id (agent-id agent))
-        ('name (agent-name agent))
-        ('version (agent-version agent))
-        ('state (agent-state agent))
-        ('memory (serialize-memory (agent-memory agent)))
-        ('tools (serialize-tools (agent-tools agent)))))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (agent-id agent))
+  (hash-put! ht 'name (agent-name agent))
+  (hash-put! ht 'version (agent-version agent))
+  (hash-put! ht 'state (agent-state agent))
+  (hash-put! ht 'memory (serialize-memory (agent-memory agent)))
+  (hash-put! ht 'tools (serialize-tools (agent-tools agent)))
+  ht))
 
 ;;; Helper: Serialize memory (placeholder)
 (def (serialize-memory memory)
   ;; TODO: Implement actual memory serialization
-  (hash ('blocks '())
-        ('count 0)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'blocks '())
+  (hash-put! ht 'count 0)
+  ht))
 
 ;;; Helper: Serialize tools (placeholder)
 (def (serialize-tools tools)
   ;; TODO: Implement actual tools serialization
-  (hash ('registered '())
-        ('count 0)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'registered '())
+  (hash-put! ht 'count 0)
+  ht))
 |#
 
 ;;; Example usage:
@@ -173,7 +187,12 @@
 ;;;   (displayln "Checkpoint created: " checkpoint-id))
 ;;;
 ;;; ;; Log operation
-;;; (elixir-wal-log! 'memory-add (hash 'content "Hello, world!"))
+;;; (elixir-wal-log! 'memory-add (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Hello, world!")
+  ht))
 ;;;
 ;;; ;; Send custom message
-;;; (elixir-send "metrics" (hash 'latency 10.5 'errors 0))
+;;; (elixir-send "metrics" (let ((ht (make-hash-table)))
+  (hash-put! ht 'latency 10.5)
+  (hash-put! ht 'errors 0)
+  ht))

@@ -28,13 +28,17 @@
   "Create mock LLM client for testing"
   (lambda (method . args)
     (case method
-      ((:chat)
+      (('chat)
        (make-llm-response
         content: "Test response"
         tool-calls: '()
-        usage: (hash 'prompt_tokens 10 'completion_tokens 20 'total_tokens 30)
+        usage: (let ((ht (make-hash-table)))
+  (hash-put! ht 'prompt_tokens 10)
+  (hash-put! ht 'completion_tokens 20)
+  (hash-put! ht 'total_tokens 30)
+  ht)
         finish-reason: "stop"
-        metadata: (hash))))))
+        metadata: (make-hash-table))))))
 
 (def (make-mock-tool-dispatcher)
   "Create mock tool dispatcher for testing"
@@ -43,34 +47,38 @@
                               (make-tool-definition
                                name: "test_tool"
                                description: "Test tool"
-                               parameters: (hash 'input (hash 'type :string 'required #t))
+                               parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'input (hash 'type 'string 'required #t))
+  ht)
                                handler: (lambda (args ctx)
                                          (make-success-result
-                                          (hash 'output (hash-ref args 'input))))
-                               category: :custom
+                                          (let ((ht (make-hash-table)))
+  (hash-put! ht 'output (hash-ref args 'input))
+  ht)))
+                               category: 'custom
                                requires-approval: #f
-                               metadata: (hash)))
+                               metadata: (make-hash-table)))
     dispatcher))
 
 (def (make-mock-message-manager)
   "Create mock message manager for testing"
   (lambda (method . args)
     (case method
-      ((:create-message)
+      (('create-message)
        (make-message
         id: "msg-123"
         agent-id: test-agent-id
-        role: :user
+        role: 'user
         content: "Test message"
         timestamp: (current-seconds)
-        metadata: (hash))))))
+        metadata: (make-hash-table))))))
 
 (def (make-mock-memory-manager)
   "Create mock memory manager for testing"
-  (let ((blocks (hash)))
+  (let ((blocks (make-hash-table)))
     (lambda (method . args)
       (case method
-        ((:get-block)
+        (('get-block)
          (let ((agent-id (car args))
                (block-name (cadr args)))
            (hash-ref blocks block-name
@@ -102,7 +110,7 @@
    step-history: '()
    current-step: 0
    start-time: (current-seconds)
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Benchmark Configuration Tests
@@ -127,7 +135,9 @@
                    warmup-iterations: 10
                    timeout: 120
                    collect-memory: #t
-                   metadata: (hash 'test "data")))
+                   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'test "data")
+  ht)))
       (check (benchmark-config? config))
       (check (= (benchmark-config-iterations config) 100))
       (check (= (benchmark-config-warmup-iterations config) 10))
@@ -195,7 +205,7 @@
                    warmup-iterations: 1
                    timeout: 60
                    collect-memory: #f
-                   metadata: (hash)))
+                   metadata: (make-hash-table)))
       (def result (run-benchmark config (lambda () (+ 1 1))))
       (check (benchmark-result? result))
       (check (equal? (benchmark-result-name result) "simple-test"))
@@ -211,7 +221,7 @@
                    warmup-iterations: 2
                    timeout: 60
                    collect-memory: #f
-                   metadata: (hash)))
+                   metadata: (make-hash-table)))
       (def result (run-benchmark config (lambda () (+ 1 1))))
       (check (>= (benchmark-result-min-time result) 0))
       (check (>= (benchmark-result-max-time result)
@@ -261,7 +271,7 @@
                    stddev-time: 0.02
                    throughput: 10.0
                    memory-used: #f
-                   metadata: (hash)))
+                   metadata: (make-hash-table)))
       (def hash-result (benchmark-result->hash result))
       (check (hash-table? hash-result))
       (check (equal? (hash-ref hash-result 'name) "test"))

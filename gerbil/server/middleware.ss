@@ -143,8 +143,7 @@
 ;;; CORS Middleware
 ;;; ============================================================================
 
-(def (cors-middleware
-      #!key
+(def (cors-middleware . rest
       (allowed-origins '("*"))
       (allowed-methods '("GET" "POST" "PUT" "DELETE" "PATCH" "OPTIONS"))
       (allowed-headers '("Content-Type" "Authorization"))
@@ -212,14 +211,13 @@
    window-size)  ; window size in seconds
   transparent: #t)
 
-(def (make-rate-limiter-instance
-      #!key
+(def (make-rate-limiter-instance . rest
       (max-requests 100)
       (window-size 60))
   "Create rate limiter"
   (make-rate-limiter
-   requests: (hash)
-   window-start: (hash)
+   requests: (make-hash-table)
+   window-start: (make-hash-table)
    max-requests: max-requests
    window-size: window-size))
 
@@ -297,8 +295,7 @@
 ;;; Standard Middleware Stack
 ;;; ============================================================================
 
-(def (standard-middleware-stack
-      #!key
+(def (standard-middleware-stack . rest
       (enable-logging #t)
       (enable-cors #t)
       (enable-error-handling #t)
@@ -337,7 +334,9 @@
 #|
 ;; Create handler
 (def (my-handler req)
-  (make-json-response (hash 'message "Hello!")))
+  (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Hello!")
+  ht)))
 
 ;; Apply single middleware
 (def logged-handler (logging-middleware my-handler))
@@ -351,14 +350,14 @@
 
 ;; Use standard middleware stack
 (def standard-handler
-  ((standard-middleware-stack) my-handler))
+  (('standard-middleware-stack)  my-handler))
 
 ;; With router
 (def router (make-router-instance))
 (get! router "/" my-handler)
 
 (def handler-with-middleware
-  ((standard-middleware-stack)
+  (('standard-middleware-stack) 
    (make-router-handler router)))
 
 (def config (make-http-server-config-instance

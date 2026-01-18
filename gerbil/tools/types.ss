@@ -17,16 +17,16 @@
 (defstruct tool-definition
   (name              ; Tool name (string)
    description       ; Tool description (string)
-   parameters        ; Parameter schema (hash)
+   parameters        ; Parameter schema (make-hash-table)
    handler           ; Tool handler function
-   category          ; Tool category (symbol: :core, :memory, :custom)
+   category          ; Tool category (symbol: :core, :memory, 'custom)
    requires-approval ; Requires user approval? (boolean)
-   metadata)         ; Additional metadata (hash)
+   metadata)         ; Additional metadata (make-hash-table)
   transparent: #t)
 
 (defstruct tool-parameter
   (name              ; Parameter name (string)
-   type              ; Parameter type (symbol: :string, :number, :boolean, :object, :array)
+   type              ; Parameter type (symbol: :string, :number, :boolean, :object, 'array)
    description       ; Parameter description (string)
    required          ; Is required? (boolean)
    default           ; Default value (optional)
@@ -37,10 +37,10 @@
 (defstruct tool-call
   (id                ; Unique call ID (string)
    tool-name         ; Tool name (string)
-   arguments         ; Tool arguments (hash)
+   arguments         ; Tool arguments (make-hash-table)
    timestamp         ; Call timestamp (seconds)
    agent-id          ; Agent ID (string)
-   status            ; Call status (symbol: :pending, :approved, :rejected, :executing, :completed, :failed)
+   status            ; Call status (symbol: :pending, :approved, :rejected, :executing, :completed, 'failed)
    result            ; Tool result (optional)
    error)            ; Error message (optional)
   transparent: #t)
@@ -49,7 +49,7 @@
   (success           ; Was successful? (boolean)
    value             ; Result value (any)
    error             ; Error message (optional string)
-   metadata)         ; Additional metadata (hash)
+   metadata)         ; Additional metadata (make-hash-table)
   transparent: #t)
 
 (defstruct tool-registry
@@ -70,10 +70,10 @@
 ;;; ============================================================================
 
 (def tool-categories
-  '(:core           ; Core tools (send_message, conversation_search)
-    :memory         ; Memory tools (core_memory_append, archival_memory_insert, etc.)
-    :system         ; System tools (internal operations)
-    :custom))       ; Custom user-defined tools
+  '('core           ; Core tools (send_message, conversation_search)
+    'memory         ; Memory tools (core_memory_append, archival_memory_insert, etc.)
+    'system         ; System tools (internal operations)
+    'custom))       ; Custom user-defined tools
 
 (def (valid-tool-category? category)
   "Check if category is valid"
@@ -84,13 +84,13 @@
 ;;; ============================================================================
 
 (def tool-parameter-types
-  '(:string
-    :number
-    :integer
-    :boolean
-    :object
-    :array
-    :null))
+  '('string
+    'number
+    'integer
+    'boolean
+    'object
+    'array
+    'null))
 
 (def (valid-parameter-type? type)
   "Check if parameter type is valid"
@@ -101,12 +101,12 @@
 ;;; ============================================================================
 
 (def tool-call-statuses
-  '(:pending        ; Waiting for approval
-    :approved       ; Approved, ready to execute
-    :rejected       ; Rejected by user
-    :executing      ; Currently executing
-    :completed      ; Successfully completed
-    :failed))       ; Failed with error
+  '('pending        ; Waiting for approval
+    'approved       ; Approved, ready to execute
+    'rejected       ; Rejected by user
+    'executing      ; Currently executing
+    'completed      ; Successfully completed
+    'failed))       ; Failed with error
 
 (def (valid-tool-call-status? status)
   "Check if tool call status is valid"
@@ -142,7 +142,7 @@
   "Validate tool parameters schema
 
    Args:
-     params: Parameter schema (hash)
+     params: Parameter schema (make-hash-table)
 
    Returns:
      (cons #t #f) if valid, (cons #f errors) if invalid"
@@ -207,7 +207,7 @@
 
    Args:
      tool-def: Tool definition
-     arguments: Tool arguments (hash)
+     arguments: Tool arguments (make-hash-table)
 
    Returns:
      (cons #t #f) if valid, (cons #f errors) if invalid"
@@ -231,22 +231,22 @@
              (let ((type (hash-ref param-def 'type)))
                ;; Type validation
                (case type
-                 ((:string)
+                 (('string)
                   (unless (string? arg-value)
                     (set! errors (cons (format "Parameter ~a must be a string" arg-name) errors))))
-                 ((:number)
+                 (('number)
                   (unless (number? arg-value)
                     (set! errors (cons (format "Parameter ~a must be a number" arg-name) errors))))
-                 ((:integer)
+                 (('integer)
                   (unless (integer? arg-value)
                     (set! errors (cons (format "Parameter ~a must be an integer" arg-name) errors))))
-                 ((:boolean)
+                 (('boolean)
                   (unless (boolean? arg-value)
                     (set! errors (cons (format "Parameter ~a must be a boolean" arg-name) errors))))
-                 ((:object)
+                 (('object)
                   (unless (hash-table? arg-value)
                     (set! errors (cons (format "Parameter ~a must be an object" arg-name) errors))))
-                 ((:array)
+                 (('array)
                   (unless (list? arg-value)
                     (set! errors (cons (format "Parameter ~a must be an array" arg-name) errors)))))
 
@@ -284,12 +284,9 @@
    Returns:
      Hash representation"
 
-  (hash 'name (tool-definition-name tool-def)
-        'description (tool-definition-description tool-def)
-        'parameters (tool-definition-parameters tool-def)
-        'category (symbol->string (tool-definition-category tool-def))
-        'requires_approval (tool-definition-requires-approval tool-def)
-        'metadata (tool-definition-metadata tool-def)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'name (tool-definition-name tool-def))
+  ht))
 
 (def (tool-call->hash call)
   "Convert tool call to hash
@@ -300,14 +297,9 @@
    Returns:
      Hash representation"
 
-  (hash 'id (tool-call-id call)
-        'tool_name (tool-call-tool-name call)
-        'arguments (tool-call-arguments call)
-        'timestamp (tool-call-timestamp call)
-        'agent_id (tool-call-agent-id call)
-        'status (symbol->string (tool-call-status call))
-        'result (tool-call-result call)
-        'error (tool-call-error call)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (tool-call-id call))
+  ht))
 
 (def (tool-result->hash result)
   "Convert tool result to hash
@@ -318,10 +310,9 @@
    Returns:
      Hash representation"
 
-  (hash 'success (tool-result-success result)
-        'value (tool-result-value result)
-        'error (tool-result-error result)
-        'metadata (tool-result-metadata result)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'success (tool-result-success result))
+  ht))
 
 (def (hash->tool-call h)
   "Convert hash to tool call
@@ -346,54 +337,34 @@
 ;;; Utility Functions
 ;;; ============================================================================
 
-(def (make-success-result value #!key (metadata (hash)))
-  "Create successful tool result
+(def (make-success-result value)
+  (make-tool-result #t value #f (make-hash-table)))
 
-   Args:
-     value: Result value
-     metadata: Additional metadata (default: empty hash)
+(def (make-success-result-with-meta value metadata)
+  (make-tool-result #t value #f metadata))
 
-   Returns:
-     Tool result structure"
+(def (make-error-result error-message)
+  (make-tool-result #f #f error-message (make-hash-table)))
 
-  (make-tool-result
-   success: #t
-   value: value
-   error: #f
-   metadata: metadata))
-
-(def (make-error-result error-message #!key (metadata (hash)))
-  "Create error tool result
-
-   Args:
-     error-message: Error message
-     metadata: Additional metadata (default: empty hash)
-
-   Returns:
-     Tool result structure"
-
-  (make-tool-result
-   success: #f
-   value: #f
-   error: error-message
-   metadata: metadata))
+(def (make-error-result-with-meta error-message metadata)
+  (make-tool-result #f #f error-message metadata))
 
 (def (tool-call-pending? call)
   "Check if tool call is pending"
-  (eq? (tool-call-status call) :pending))
+  (eq? (tool-call-status call) 'pending))
 
 (def (tool-call-approved? call)
   "Check if tool call is approved"
-  (eq? (tool-call-status call) :approved))
+  (eq? (tool-call-status call) 'approved))
 
 (def (tool-call-executing? call)
   "Check if tool call is executing"
-  (eq? (tool-call-status call) :executing))
+  (eq? (tool-call-status call) 'executing))
 
 (def (tool-call-completed? call)
   "Check if tool call is completed"
-  (eq? (tool-call-status call) :completed))
+  (eq? (tool-call-status call) 'completed))
 
 (def (tool-call-failed? call)
   "Check if tool call failed"
-  (eq? (tool-call-status call) :failed))
+  (eq? (tool-call-status call) 'failed))

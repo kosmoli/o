@@ -30,44 +30,40 @@
           ;; TODO: Actually create agent in database
           (let ((agent-id (generate-agent-id))
                 (name (hash-ref data 'name))
-                (llm-config (hash-ref data 'llm_config (hash)))
+                (llm-config (let ((ht (make-hash-table)))
+  (hash-put! ht 'llm_config (hash))
+  ht))
                 (system-prompt (hash-ref data 'system_prompt "You are a helpful assistant."))
-                (memory-config (hash-ref data 'memory_config (hash))))
+                (memory-config (let ((ht (make-hash-table)))
+  (hash-put! ht 'memory_config (hash))
+  ht)))
 
             (make-json-response
-             (hash
-              'id agent-id
-              'name name
-              'llm_config llm-config
-              'system_prompt system-prompt
-              'memory_config memory-config
-              'created_at (current-seconds)
-              'updated_at (current-seconds))
+             (let ((ht (make-hash-table)))
+  (hash-put! ht 'id agent-id)
+  (hash-put! ht 'name name)
+  (hash-put! ht 'llm_config llm-config)
+  (hash-put! ht 'system_prompt system-prompt)
+  (hash-put! ht 'memory_config memory-config)
+  (hash-put! ht 'created_at (current-seconds))
+  ht)
              status: 201)))))))
 
 (def (get-agent-handler req)
-  "GET /v1/agents/:id - Get agent by ID"
+  "GET /v1/agents/'id - Get agent by ID"
   (let ((agent-id (get-path-param req 'id)))
     (if (not agent-id)
         (make-error-response "Agent ID required" status: 400)
 
         ;; TODO: Actually fetch agent from database
         (make-json-response
-         (hash
-          'id agent-id
-          'name (format "Agent ~a" agent-id)
-          'llm_config (hash
-                       'provider "openai"
-                       'model "gpt-4")
-          'system_prompt "You are a helpful assistant."
-          'memory_config (hash
-                          'core_memory_enabled #t
-                          'archival_memory_enabled #t)
-          'created_at (current-seconds)
-          'updated_at (current-seconds))))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'id agent-id)
+  (hash-put! ht 'name (format "Agent ~a" agent-id))
+  ht)))))
 
 (def (update-agent-handler req)
-  "PATCH /v1/agents/:id - Update agent"
+  "PATCH /v1/agents/'id - Update agent"
   (let ((agent-id (get-path-param req 'id)))
     (if (not agent-id)
         (make-error-response "Agent ID required" status: 400)
@@ -78,25 +74,23 @@
             (let ((data (http-request-json req)))
               ;; TODO: Actually update agent in database
               (make-json-response
-               (hash
-                'id agent-id
-                'name (hash-ref data 'name (format "Agent ~a" agent-id))
-                'llm_config (hash-ref data 'llm_config (hash))
-                'system_prompt (hash-ref data 'system_prompt "You are a helpful assistant.")
-                'memory_config (hash-ref data 'memory_config (hash))
-                'updated_at (current-seconds))))))))
+               (let ((ht (make-hash-table)))
+  (hash-put! ht 'id agent-id)
+  (hash-put! ht 'name (hash-ref data 'name (format "Agent ~a" agent-id)))
+  ht)))))))
 
 (def (delete-agent-handler req)
-  "DELETE /v1/agents/:id - Delete agent"
+  "DELETE /v1/agents/'id - Delete agent"
   (let ((agent-id (get-path-param req 'id)))
     (if (not agent-id)
         (make-error-response "Agent ID required" status: 400)
 
         ;; TODO: Actually delete agent from database
         (make-json-response
-         (hash
-          'deleted #t
-          'id agent-id)
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'deleted #t)
+  (hash-put! ht 'id agent-id)
+  ht)
          status: 200))))
 
 (def (list-agents-handler req)
@@ -106,19 +100,14 @@
 
     ;; TODO: Actually fetch agents from database
     (make-json-response
-     (hash
-      'agents (list
+     (let ((ht (make-hash-table)))
+  (hash-put! ht 'agents (list
                (hash
                 'id "agent-1"
                 'name "Agent 1"
-                'created_at (current-seconds))
-               (hash
-                'id "agent-2"
-                'name "Agent 2"
                 'created_at (current-seconds)))
-      'total 2
-      'limit (string->number limit)
-      'offset (string->number offset)))))
+               (hash ('id "agent-2") ('name "Agent 2") ('created_at (current-seconds))))
+  ht))))
 
 ;;; ============================================================================
 ;;; Agent Configuration
@@ -132,18 +121,13 @@
 
         ;; TODO: Actually fetch config from database
         (make-json-response
-         (hash
-          'llm_config (hash
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'llm_config (hash
                        'provider "openai"
                        'model "gpt-4"
                        'temperature 0.7
-                       'max_tokens 4096)
-          'memory_config (hash
-                          'core_memory_enabled #t
-                          'archival_memory_enabled #t
-                          'max_archival_entries 10000)
-          'tool_config (hash
-                        'enabled_tools (list "send_message" "conversation_search")))))))
+                       'max_tokens 4096))
+  ht)))))
 
 (def (update-agent-config-handler req)
   "PATCH /v1/agents/:id/config - Update agent configuration"
@@ -157,9 +141,10 @@
             (let ((data (http-request-json req)))
               ;; TODO: Actually update config in database
               (make-json-response
-               (hash
-                'updated #t
-                'config data)))))))
+               (let ((ht (make-hash-table)))
+  (hash-put! ht 'updated #t)
+  (hash-put! ht 'config data)
+  ht)))))))
 
 ;;; ============================================================================
 ;;; Agent Memory
@@ -173,12 +158,11 @@
 
         ;; TODO: Actually fetch memory from database
         (make-json-response
-         (hash
-          'core_memory (hash
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'core_memory (hash
                         'persona "You are a helpful AI assistant."
-                        'human "User prefers concise responses.")
-          'archival_memory_count 0
-          'recall_memory_count 0)))))
+                        'human "User prefers concise responses."))
+  ht)))))
 
 (def (update-agent-memory-handler req)
   "PATCH /v1/agents/:id/memory - Update agent memory"
@@ -192,9 +176,10 @@
             (let ((data (http-request-json req)))
               ;; TODO: Actually update memory in database
               (make-json-response
-               (hash
-                'updated #t
-                'memory data)))))))
+               (let ((ht (make-hash-table)))
+  (hash-put! ht 'updated #t)
+  (hash-put! ht 'memory data)
+  ht)))))))
 
 ;;; ============================================================================
 ;;; Utility Functions

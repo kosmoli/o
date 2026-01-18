@@ -8,14 +8,17 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  :o/database/client)
+;;
+  ;; ;; (
+  ;; :o/database/client (placeholder)) (placeholder)
+ (placeholder)
+)
 
 ;;; ============================================================================
 ;;; Agent Management
 ;;; ============================================================================
 
-(def (agent-create! name
-                    #!key
+(def (agent-create! name . rest
                     (llm-provider "openai")
                     (llm-model "gpt-4")
                     (llm-temperature 0.7)
@@ -27,12 +30,14 @@
 
   ;; Create agent
   (let* ((agent (db-create-agent
-                 (hash 'name name
-                       'llm_provider llm-provider
-                       'llm_model llm-model
-                       'llm_temperature llm-temperature
-                       'llm_max_tokens llm-max-tokens
-                       'system_prompt system-prompt)))
+                 (let ((ht (make-hash-table)))
+  (hash-put! ht 'name name)
+  (hash-put! ht 'llm_provider llm-provider)
+  (hash-put! ht 'llm_model llm-model)
+  (hash-put! ht 'llm_temperature llm-temperature)
+  (hash-put! ht 'llm_max_tokens llm-max-tokens)
+  (hash-put! ht 'system_prompt system-prompt)
+  ht)))
          (agent-id (hash-ref agent 'id)))
 
     ;; Initialize memory blocks (already done by Elixir, but can override)
@@ -55,7 +60,7 @@
   (db-delete-agent agent-id)
   (displayln (format "Agent deleted: ~a" agent-id)))
 
-(def (agent-list #!key (limit 10) (offset 0))
+(def (agent-list . rest (limit 10) (offset 0))
   "List agents"
   (db-list-agents limit: limit offset: offset))
 
@@ -66,21 +71,17 @@
 (def (agent-get-config agent-id)
   "Get agent configuration"
   (let ((agent (agent-get agent-id)))
-    (hash
-     'llm_config (hash
-                  'provider (hash-ref agent 'llm_provider)
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'llm_config (hash
+                  'provider (hash-ref agent 'llm_provider))
                   'model (hash-ref agent 'llm_model)
                   'temperature (hash-ref agent 'llm_temperature)
                   'max_tokens (hash-ref agent 'llm_max_tokens))
-     'system_prompt (hash-ref agent 'system_prompt)
-     'memory_config (hash
-                     'core_memory_enabled (hash-ref agent 'core_memory_enabled)
-                     'archival_memory_enabled (hash-ref agent 'archival_memory_enabled)
-                     'max_archival_entries (hash-ref agent 'max_archival_entries)))))
+  ht)))
 
 (def (agent-update-config! agent-id config)
   "Update agent configuration"
-  (let ((updates (hash)))
+  (let ((updates (make-hash-table)))
 
     ;; Update LLM config
     (when (hash-key? config 'llm_config)
@@ -117,14 +118,13 @@
 (def (agent-get-memory agent-id)
   "Get agent memory (core memory blocks)"
   (let ((blocks (db-get-memory-blocks agent-id)))
-    (hash
-     'core_memory (list->hash
-                   (map (lambda (block)
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'core_memory (list->hash
+                   (map (lambda (block))
                           (cons (string->symbol (hash-ref block 'label))
                                 (hash-ref block 'value)))
                         blocks))
-     'archival_memory_count 0  ;; TODO: Get actual count
-     'recall_memory_count 0)))
+  ht)))
 
 (def (agent-update-memory! agent-id memory)
   "Update agent memory"
@@ -145,7 +145,7 @@
 
 (def (agent-increment-stat! agent-id stat-name (amount 1))
   "Increment a statistic"
-  (let ((updates (hash stat-name amount)))
+  (let ((updates (make-hash-table)))
     (db-update-statistics agent-id updates)))
 
 ;;; ============================================================================
@@ -204,17 +204,19 @@
 
 ;; Update agent config
 (agent-update-config! agent-id
-                      (hash 'llm_config (hash 'temperature 0.8)
-                            'system_prompt "You are a very helpful assistant."))
+                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'llm_config (hash 'temperature 0.8))
+  ht))
 
 ;; Get agent memory
 (def memory (agent-get-memory agent-id))
 
 ;; Update agent memory
 (agent-update-memory! agent-id
-                      (hash 'core_memory
-                            (hash 'persona "You are a very helpful AI assistant."
-                                  'human "User prefers detailed explanations.")))
+                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'core_memory (hash 'persona "You are a very helpful AI assistant."
+                                  'human "User prefers detailed explanations."))
+  ht))
 
 ;; Get agent statistics
 (def stats (agent-get-stats agent-id))

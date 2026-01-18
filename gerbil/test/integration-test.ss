@@ -27,7 +27,9 @@
   (let* ((agent (make-agent-instance
                  name: "TestAgent"
                  version: "1.0.0"
-                 config: (hash 'checkpoint-interval 60)))
+                 config: (let ((ht (make-hash-table)))
+  (hash-put! ht 'checkpoint-interval 60)
+  ht)))
          (state (make-agent-state-instance))
          (memory (make-agent-memory-instance)))
 
@@ -58,7 +60,7 @@
     (test-case "Agent initialization"
       (let ((agent (make-agent-instance name: "TestAgent")))
         (check (agent? agent) => #t)
-        (check (agent-lifecycle agent) => :initializing)
+        (check (agent-lifecycle agent) => 'initializing)
         (check (agent-name agent) => "TestAgent")))
 
     (test-case "Agent state transitions"
@@ -68,24 +70,24 @@
 
         ;; Initialize
         (agent-initialize! agent state memory)
-        (check (agent-lifecycle agent) => :running)
+        (check (agent-lifecycle agent) => 'running)
 
         ;; Suspend
         (agent-suspend! agent)
-        (check (agent-lifecycle agent) => :suspended)
+        (check (agent-lifecycle agent) => 'suspended)
 
         ;; Resume
         (agent-resume! agent)
-        (check (agent-lifecycle agent) => :running)
+        (check (agent-lifecycle agent) => 'running)
 
         ;; Shutdown
         (agent-shutdown! agent)
-        (check (agent-lifecycle agent) => :terminated)))
+        (check (agent-lifecycle agent) => 'terminated)))
 
     (test-case "Invalid state transitions"
       (let ((agent (make-agent-instance)))
         (check-exception
-         (agent-transition! agent :terminated)
+         (agent-transition! agent 'terminated)
          => #t)))
 
     (test-case "Agent metadata management"
@@ -122,32 +124,38 @@
     (test-case "Conversation management"
       (let ((state (make-agent-state-instance)))
         ;; Add messages
-        (add-message! state :user "Hello")
-        (add-message! state :assistant "Hi there!")
+        (add-message! state 'user "Hello")
+        (add-message! state 'assistant "Hi there!")
 
         ;; Get conversation
         (let ((conv (get-conversation state)))
           (check (length conv) => 2)
-          (check (conversation-message-role (car conv)) => :assistant)
+          (check (conversation-message-role (car conv)) => 'assistant)
           (check (conversation-message-content (car conv)) => "Hi there!"))))
 
     (test-case "History tracking"
       (let ((state (make-agent-state-instance)))
         ;; Add history entries
         (add-history-entry! state
-                           (hash 'action 'test)
-                           (hash 'result 'success))
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'action 'test)
+  ht)
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'result 'success)
+  ht))
 
         ;; Get history
         (let ((history (get-history state)))
           (check (length history) => 1)
-          (check (history-entry-action (car history)) => (hash 'action 'test)))))
+          (check (history-entry-action (car history)) => (let ((ht (make-hash-table)))
+  (hash-put! ht 'action 'test)
+  ht)))))
 
     (test-case "State snapshot and restore"
       (let ((state (make-agent-state-instance)))
         ;; Set up state
         (state-set! state 'counter 42)
-        (add-message! state :user "Test message")
+        (add-message! state 'user "Test message")
 
         ;; Create snapshot
         (let ((snapshot (snapshot-state state)))
@@ -168,19 +176,19 @@
 
     (test-case "Memory block creation"
       (let ((block (make-memory-block-instance
-                    :episodic
+                    'episodic
                     "Test memory"
                     importance: 0.8
                     tags: '(test))))
         (check (memory-block? block) => #t)
-        (check (memory-block-type block) => :episodic)
+        (check (memory-block-type block) => 'episodic)
         (check (memory-block-importance block) => 0.8)))
 
     (test-case "Short-term memory operations"
       (let ((memory (make-agent-memory-instance)))
         ;; Add blocks
-        (let ((block1 (make-memory-block-instance :episodic "Memory 1"))
-              (block2 (make-memory-block-instance :episodic "Memory 2")))
+        (let ((block1 (make-memory-block-instance 'episodic "Memory 1"))
+              (block2 (make-memory-block-instance 'episodic "Memory 2")))
           (add-to-short-term! memory block1)
           (add-to-short-term! memory block2)
 
@@ -191,7 +199,7 @@
     (test-case "Long-term memory operations"
       (let ((memory (make-agent-memory-instance)))
         ;; Add block
-        (let ((block (make-memory-block-instance :semantic "Fact")))
+        (let ((block (make-memory-block-instance 'semantic "Fact")))
           (add-to-long-term! memory block)
 
           ;; Retrieve block
@@ -203,8 +211,8 @@
     (test-case "Memory consolidation"
       (let ((memory (make-agent-memory-instance)))
         ;; Add important blocks to short-term
-        (let ((block1 (make-memory-block-instance :episodic "Important" importance: 0.9))
-              (block2 (make-memory-block-instance :episodic "Not important" importance: 0.3)))
+        (let ((block1 (make-memory-block-instance 'episodic "Important" importance: 0.9))
+              (block2 (make-memory-block-instance 'episodic "Not important" importance: 0.3)))
           (add-to-short-term! memory block1)
           (add-to-short-term! memory block2)
 
@@ -218,9 +226,9 @@
       (let ((memory (make-agent-memory-instance)))
         ;; Add searchable blocks
         (add-to-short-term! memory
-                           (make-memory-block-instance :episodic "weather is sunny"))
+                           (make-memory-block-instance 'episodic "weather is sunny"))
         (add-to-short-term! memory
-                           (make-memory-block-instance :episodic "temperature is cold"))
+                           (make-memory-block-instance 'episodic "temperature is cold"))
 
         ;; Search
         (let ((results (search-memory memory "weather")))
@@ -231,7 +239,7 @@
       (let ((memory (make-agent-memory-instance)))
         ;; Add some data
         (add-to-short-term! memory
-                           (make-memory-block-instance :episodic "Test"))
+                           (make-memory-block-instance 'episodic "Test"))
 
         ;; Serialize
         (let ((serialized (serialize-memory memory)))
@@ -265,7 +273,7 @@
                      parameters: (list
                                   (make-parameter-spec
                                    name: 'x
-                                   type: :number
+                                   type: 'number
                                    required?: #t
                                    description: "Input number")))))
           (register-tool! registry tool)
@@ -284,17 +292,20 @@
                         parameters: (list
                                      (make-parameter-spec
                                       name: 'a
-                                      type: :number
+                                      type: 'number
                                       required?: #t
                                       description: "First number")
                                      (make-parameter-spec
                                       name: 'b
-                                      type: :number
+                                      type: 'number
                                       required?: #t
                                       description: "Second number"))))
 
         ;; Execute tool
-        (let ((result (execute-tool registry "add" (hash 'a 5 'b 3))))
+        (let ((result (execute-tool registry "add" (let ((ht (make-hash-table)))
+  (hash-put! ht 'a 5)
+  (hash-put! ht 'b 3)
+  ht))))
           (check (tool-result? result) => #t)
           (check (tool-result-success? result) => #t)
           (check (tool-result-result result) => 8))))
@@ -310,7 +321,9 @@
         (check (tool-exists? registry "generate_uuid") => #t)
 
         ;; Test echo tool
-        (let ((result (execute-tool registry "echo" (hash 'message "Hello"))))
+        (let ((result (execute-tool registry "echo" (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Hello")
+  ht))))
           (check (tool-result-success? result) => #t)
           (check (tool-result-result result) => "Hello"))))
 
@@ -324,17 +337,19 @@
                         parameters: (list
                                      (make-parameter-spec
                                       name: 'x
-                                      type: :number
+                                      type: 'number
                                       required?: #t
                                       description: "Input"))
                         cacheable?: #t))
 
         ;; First execution (slow)
-        (let ((result1 (execute-tool registry "expensive" (hash 'x 5))))
+        (let ((result1 (execute-tool registry "expensive" (let ((ht (make-hash-table)))
+  (hash-put! ht 'x 5)
+  ht))))
           (check (tool-result-success? result1) => #t)
 
           ;; Second execution (cached, fast)
-          (let ((result2 (execute-tool registry "expensive" (hash 'x 5))))
+          (let ((result2 (execute-tool registry "expensive" (hash ('x 5)))))
             (check (tool-result-success? result2) => #t)
             (check (tool-result-result result2) => 25)))))))
 
@@ -376,11 +391,11 @@
         ;; Set up complex state
         (state-set! (agent-state agent) 'counter 100)
         (state-set! (agent-state agent) 'name "TestAgent")
-        (add-message! (agent-state agent) :user "Hello")
+        (add-message! (agent-state agent) 'user "Hello")
 
         ;; Add memory
         (add-to-short-term! (agent-memory agent)
-                           (make-memory-block-instance :episodic "Test memory"))
+                           (make-memory-block-instance 'episodic "Test memory"))
 
         ;; Serialize agent
         (let ((serialized (serialize-agent agent)))
@@ -452,7 +467,7 @@
         ;; 2. Agent stores memory
         (add-to-short-term! (agent-memory agent)
                            (make-memory-block-instance
-                            :episodic
+                            'episodic
                             "User asked a question"
                             importance: 0.8))
 
@@ -474,13 +489,13 @@
         ;; Add multiple memories with varying importance
         (add-to-short-term! (agent-memory agent)
                            (make-memory-block-instance
-                            :episodic "Important event" importance: 0.9))
+                            'episodic "Important event" importance: 0.9))
         (add-to-short-term! (agent-memory agent)
                            (make-memory-block-instance
-                            :episodic "Minor event" importance: 0.2))
+                            'episodic "Minor event" importance: 0.2))
         (add-to-short-term! (agent-memory agent)
                            (make-memory-block-instance
-                            :episodic "Significant event" importance: 0.7))
+                            'episodic "Significant event" importance: 0.7))
 
         ;; Consolidate
         (let ((consolidated (consolidate-memory! (agent-memory agent))))
@@ -504,9 +519,9 @@
                         description: "Increment counter"))
 
         ;; Execute tool multiple times
-        (execute-tool registry "increment_counter" (hash))
-        (execute-tool registry "increment_counter" (hash))
-        (execute-tool registry "increment_counter" (hash))
+        (execute-tool registry "increment_counter" (make-hash-table))
+        (execute-tool registry "increment_counter" (make-hash-table))
+        (execute-tool registry "increment_counter" (make-hash-table))
 
         ;; Check state
         (check (state-get (agent-state agent) 'counter) => 3)

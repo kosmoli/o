@@ -20,7 +20,7 @@
 
 (def test-agent-id "test-agent-context-123")
 
-(def (make-test-message content #!key (role :user))
+(def (make-test-message content . rest (role 'user))
   "Create test message"
   (make-message
    id: "msg-test"
@@ -28,7 +28,7 @@
    role: role
    content: content
    timestamp: (current-seconds)
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 (def (make-test-memory-block name value)
   "Create test memory block"
@@ -38,7 +38,7 @@
    value: value
    template: #f
    limit: 1000
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 (def (make-test-context messages memory-blocks)
   "Create test execution context"
@@ -51,7 +51,7 @@
    step-history: '()
    current-step: 0
    start-time: (current-seconds)
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Token Counting Tests
@@ -121,18 +121,18 @@
       (check (= (context-window-manager-max-tokens manager) 100000))
       (check (= (context-window-manager-system-tokens manager) 2000))
       (check (= (context-window-manager-response-tokens manager) 4096))
-      (check (eq? (context-window-manager-strategy manager) :truncate)))
+      (check (eq? (context-window-manager-strategy manager) 'truncate)))
 
     (test-case "Create manager with custom settings"
       (def manager (make-context-window-manager
                     max-tokens: 50000
                     system-tokens: 1000
                     response-tokens: 2048
-                    strategy: :sliding))
+                    strategy: 'sliding))
       (check (= (context-window-manager-max-tokens manager) 50000))
       (check (= (context-window-manager-system-tokens manager) 1000))
       (check (= (context-window-manager-response-tokens manager) 2048))
-      (check (eq? (context-window-manager-strategy manager) :sliding)))
+      (check (eq? (context-window-manager-strategy manager) 'sliding)))
 
     (test-case "Analyze context usage"
       (def manager (make-context-window-manager max-tokens: 10000))
@@ -193,7 +193,7 @@
     (test-case "Optimize context with truncation"
       (def manager (make-context-window-manager
                     max-tokens: 1000
-                    strategy: :truncate))
+                    strategy: 'truncate))
       (def messages (map (lambda (i)
                           (make-test-message
                            (string-append "Message " (number->string i))))
@@ -228,7 +228,7 @@
     (test-case "Optimize context with sliding window"
       (def manager (make-context-window-manager
                     max-tokens: 1000
-                    strategy: :sliding))
+                    strategy: 'sliding))
       (def messages (map (lambda (i)
                           (make-test-message
                            (string-append "Message " (number->string i))))
@@ -243,7 +243,7 @@
     (test-case "Sliding window preserves early messages"
       (def manager (make-context-window-manager
                     max-tokens: 500
-                    strategy: :sliding))
+                    strategy: 'sliding))
       (def messages (list
                      (make-test-message "First message")
                      (make-test-message "Second message")
@@ -268,7 +268,7 @@
     (test-case "Optimize with truncate strategy"
       (def manager (make-context-window-manager
                     max-tokens: 1000
-                    strategy: :truncate))
+                    strategy: 'truncate))
       (def messages (map (lambda (i) (make-test-message "Test")) (iota 50)))
       (def context (make-test-context messages '()))
       (def optimized (optimize-context manager context))
@@ -277,7 +277,7 @@
     (test-case "Optimize with sliding strategy"
       (def manager (make-context-window-manager
                     max-tokens: 1000
-                    strategy: :sliding))
+                    strategy: 'sliding))
       (def messages (map (lambda (i) (make-test-message "Test")) (iota 50)))
       (def context (make-test-context messages '()))
       (def optimized (optimize-context manager context))
@@ -286,7 +286,7 @@
     (test-case "Optimize with summarize strategy"
       (def manager (make-context-window-manager
                     max-tokens: 1000
-                    strategy: :summarize))
+                    strategy: 'summarize))
       (def messages (map (lambda (i) (make-test-message "Test")) (iota 50)))
       (def context (make-test-context messages '()))
       ;; Summarize currently falls back to truncate

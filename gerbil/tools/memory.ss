@@ -41,27 +41,29 @@
       (let ((block (memory-block-append! manager block-name content)))
 
         (make-success-result
-         (hash 'block_name block-name
-               'old_value (hash-ref block 'old_value)
-               'new_value (hash-ref block 'value)
-               'updated_at (hash-ref block 'updated_at))
-         metadata: (hash 'tool "core_memory_append"))))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'block_name block-name)
+  (hash-put! ht 'old_value (hash-ref block 'old_value))
+  ht)
+         metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool "core_memory_append")
+  ht))))))
 
 (def core-memory-append-tool
   (make-tool-definition
    name: "core_memory_append"
    description: "Append content to a core memory block. Use this to add new information to persona or human memory blocks without replacing existing content."
-   parameters: (hash
-                'name (hash 'type :string
-                           'description "Name of the memory block (e.g., 'persona', 'human')"
+   parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'name (hash 'type 'string
+                           'description "Name of the memory block (e.g., 'persona', 'human'))"
                            'required #t)
-                'content (hash 'type :string
-                              'description "Content to append to the memory block"
-                              'required #t))
+  ht)
    handler: core-memory-append-handler
-   category: :memory
+   category: 'memory
    requires-approval: #f
-   metadata: (hash 'version "1.0")))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0")
+  ht)))
 
 (def (core-memory-replace-handler arguments context)
   "Handler for core_memory_replace tool
@@ -85,30 +87,29 @@
       (let ((block (memory-block-replace! manager block-name old-content new-content)))
 
         (make-success-result
-         (hash 'block_name block-name
-               'old_value (hash-ref block 'old_value)
-               'new_value (hash-ref block 'value)
-               'updated_at (hash-ref block 'updated_at))
-         metadata: (hash 'tool "core_memory_replace"))))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'block_name block-name)
+  (hash-put! ht 'old_value (hash-ref block 'old_value))
+  ht)
+         metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool "core_memory_replace")
+  ht))))))
 
 (def core-memory-replace-tool
   (make-tool-definition
    name: "core_memory_replace"
    description: "Replace content in a core memory block. Use this to update or correct existing information in persona or human memory blocks."
-   parameters: (hash
-                'name (hash 'type :string
-                           'description "Name of the memory block (e.g., 'persona', 'human')"
+   parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'name (hash 'type 'string
+                           'description "Name of the memory block (e.g., 'persona', 'human'))"
                            'required #t)
-                'old_content (hash 'type :string
-                                  'description "Content to replace (must exist in the block)"
-                                  'required #t)
-                'new_content (hash 'type :string
-                                  'description "New content to replace with"
-                                  'required #t))
+  ht)
    handler: core-memory-replace-handler
-   category: :memory
+   category: 'memory
    requires-approval: #f
-   metadata: (hash 'version "1.0")))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0")
+  ht)))
 
 ;;; ============================================================================
 ;;; Archival Memory Tools
@@ -138,33 +139,28 @@
                                     tags: tags)))
 
         (make-success-result
-         (hash 'id (hash-ref entry 'id)
-               'content content
-               'importance importance
-               'tags tags
-               'created_at (hash-ref entry 'created_at))
-         metadata: (hash 'tool "archival_memory_insert"))))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (hash-ref entry 'id))
+  ht)
+         metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool "archival_memory_insert")
+  ht))))))
 
 (def archival-memory-insert-tool
   (make-tool-definition
    name: "archival_memory_insert"
    description: "Insert content into archival memory. Use this to store important information for long-term retrieval. Content will be embedded for semantic search."
-   parameters: (hash
-                'content (hash 'type :string
+   parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'content (hash 'type 'string
                               'description "Content to store in archival memory"
-                              'required #t)
-                'importance (hash 'type :integer
-                                 'description "Importance score (1-10, default: 5)"
-                                 'required #f
-                                 'default 5)
-                'tags (hash 'type :array
-                           'description "Tags for categorization (optional)"
-                           'required #f
-                           'default '()))
+                              'required #t))
+  ht)
    handler: archival-memory-insert-handler
-   category: :memory
+   category: 'memory
    requires-approval: #f
-   metadata: (hash 'version "1.0")))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0")
+  ht)))
 
 (def (archival-memory-search-handler arguments context)
   "Handler for archival_memory_search tool
@@ -192,40 +188,35 @@
         ;; Format results
         (let ((formatted-results
                (map (lambda (entry)
-                     (hash 'id (hash-ref entry 'id)
-                           'content (hash-ref entry 'content)
-                           'importance (hash-ref entry 'importance)
-                           'tags (hash-ref entry 'tags)
-                           'created_at (hash-ref entry 'created_at)))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (hash-ref entry 'id))
+  ht))
                    results)))
 
           (make-success-result
-           (hash 'results formatted-results
-                 'count (length formatted-results)
-                 'query query
-                 'page page)
-           metadata: (hash 'tool "archival_memory_search")))))))
+           (let ((ht (make-hash-table)))
+  (hash-put! ht 'results formatted-results)
+  (hash-put! ht 'count (length formatted-results))
+  ht)
+           metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool "archival_memory_search")
+  ht)))))))
 
 (def archival-memory-search-tool
   (make-tool-definition
    name: "archival_memory_search"
    description: "Search archival memory for relevant information. Use this to retrieve previously stored information based on text matching."
-   parameters: (hash
-                'query (hash 'type :string
+   parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'query (hash 'type 'string
                             'description "Search query to find matching entries"
-                            'required #t)
-                'limit (hash 'type :integer
-                            'description "Maximum number of results to return (default: 10)"
-                            'required #f
-                            'default 10)
-                'page (hash 'type :integer
-                           'description "Page number for pagination (0-indexed, default: 0)"
-                           'required #f
-                           'default 0))
+                            'required #t))
+  ht)
    handler: archival-memory-search-handler
-   category: :memory
+   category: 'memory
    requires-approval: #f
-   metadata: (hash 'version "1.0")))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0")
+  ht)))
 
 (def (archival-memory-semantic-search-handler arguments context)
   "Handler for archival_memory_semantic_search tool
@@ -253,41 +244,35 @@
         ;; Format results
         (let ((formatted-results
                (map (lambda (entry)
-                     (hash 'id (hash-ref entry 'id)
-                           'content (hash-ref entry 'content)
-                           'importance (hash-ref entry 'importance)
-                           'tags (hash-ref entry 'tags)
-                           'similarity (hash-ref entry 'similarity)
-                           'created_at (hash-ref entry 'created_at)))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (hash-ref entry 'id))
+  ht))
                    results)))
 
           (make-success-result
-           (hash 'results formatted-results
-                 'count (length formatted-results)
-                 'query query
-                 'min_similarity min-similarity)
-           metadata: (hash 'tool "archival_memory_semantic_search")))))))
+           (let ((ht (make-hash-table)))
+  (hash-put! ht 'results formatted-results)
+  (hash-put! ht 'count (length formatted-results))
+  ht)
+           metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool "archival_memory_semantic_search")
+  ht)))))))
 
 (def archival-memory-semantic-search-tool
   (make-tool-definition
    name: "archival_memory_semantic_search"
    description: "Search archival memory using semantic similarity. Use this to find conceptually related information even if the exact words don't match."
-   parameters: (hash
-                'query (hash 'type :string
+   parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'query (hash 'type 'string
                             'description "Search query for semantic matching"
-                            'required #t)
-                'limit (hash 'type :integer
-                            'description "Maximum number of results to return (default: 10)"
-                            'required #f
-                            'default 10)
-                'min_similarity (hash 'type :number
-                                     'description "Minimum similarity score (0.0-1.0, default: 0.7)"
-                                     'required #f
-                                     'default 0.7))
+                            'required #t))
+  ht)
    handler: archival-memory-semantic-search-handler
-   category: :memory
+   category: 'memory
    requires-approval: #f
-   metadata: (hash 'version "1.0")))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0")
+  ht)))
 
 ;;; ============================================================================
 ;;; Initialize Memory Tools
@@ -325,38 +310,48 @@
 ;; Append to core memory
 (def call (dispatcher-call-tool dispatcher
                                "core_memory_append"
-                               (hash 'name "persona"
-                                     'content "I am helpful and friendly.")
+                               (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "I am helpful and friendly.")
+  ht)
                                agent-id))
 
 ;; Replace in core memory
 (def call (dispatcher-call-tool dispatcher
                                "core_memory_replace"
-                               (hash 'name "persona"
-                                     'old_content "helpful"
-                                     'new_content "very helpful")
+                               (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'old_content "helpful")
+  (hash-put! ht 'new_content "very helpful")
+  ht)
                                agent-id))
 
 ;; Insert into archival memory
 (def call (dispatcher-call-tool dispatcher
                                "archival_memory_insert"
-                               (hash 'content "User prefers Python over JavaScript"
-                                     'importance 8
-                                     'tags '("preferences" "programming"))
+                               (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "User prefers Python over JavaScript")
+  (hash-put! ht 'importance 8)
+  (hash-put! ht 'tags '("preferences"))
+  ht)
                                agent-id))
 
 ;; Search archival memory
 (def call (dispatcher-call-tool dispatcher
                                "archival_memory_search"
-                               (hash 'query "Python"
-                                     'limit 5)
+                               (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "Python")
+  (hash-put! ht 'limit 5)
+  ht)
                                agent-id))
 
 ;; Semantic search archival memory
 (def call (dispatcher-call-tool dispatcher
                                "archival_memory_semantic_search"
-                               (hash 'query "programming languages"
-                                     'limit 5
-                                     'min_similarity 0.7)
+                               (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "programming languages")
+  (hash-put! ht 'limit 5)
+  (hash-put! ht 'min_similarity 0.7)
+  ht)
                                agent-id))
 |#

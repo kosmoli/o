@@ -21,10 +21,10 @@
    name                  ; Rule name (string)
    description           ; Rule description (string)
    condition             ; Condition function (arguments, context) -> boolean
-   action                ; Action to take (:allow, :deny, :require-approval)
+   action                ; Action to take (:allow, :deny, 'require-approval)
    priority              ; Rule priority (higher = evaluated first)
    enabled               ; Is rule enabled? (boolean)
-   metadata)             ; Additional metadata (hash)
+   metadata)             ; Additional metadata (make-hash-table)
   transparent: #t)
 
 (defstruct rule-evaluation
@@ -41,7 +41,7 @@
    requested-at          ; Request timestamp
    requested-by          ; Agent ID that requested
    reason                ; Reason for approval requirement
-   status                ; Request status (:pending, :approved, :rejected)
+   status                ; Request status (:pending, :approved, 'rejected)
    reviewed-at           ; Review timestamp (optional)
    reviewed-by           ; Reviewer ID (optional)
    review-notes)         ; Review notes (optional)
@@ -128,13 +128,13 @@
      context: Execution context
 
    Returns:
-     Rule evaluation result (:allow, :deny, :require-approval) and reason"
+     Rule evaluation result (:allow, :deny, 'require-approval) and reason"
 
   (let ((rules (filter tool-rule-enabled (rule-engine-rules engine))))
     (let loop ((rs rules))
       (if (null? rs)
           ;; No rules matched - default to allow
-          (cons :allow "No matching rules - default allow")
+          (cons 'allow "No matching rules - default allow")
           (let ((rule (car rs)))
             (try
              (if ((tool-rule-condition rule) tool-name arguments context)
@@ -157,7 +157,7 @@
                (displayln (format "Rule evaluation error: ~a" (error-message e)))
                (loop (cdr rs)))))))))
 
-(def (rule-engine-get-history engine #!key (limit 10))
+(def (rule-engine-get-history engine . rest (limit 10))
   "Get rule evaluation history
 
    Args:
@@ -186,7 +186,7 @@
      Approval manager"
 
   (make-approval-manager
-   requests: (hash)
+   requests: (make-hash-table)
    pending-queue: '()))
 
 (def (approval-manager-create-request! manager tool-call reason)
@@ -206,7 +206,7 @@
                   requested-at: (current-seconds)
                   requested-by: (tool-call-agent-id tool-call)
                   reason: reason
-                  status: :pending
+                  status: 'pending
                   reviewed-at: #f
                   reviewed-by: #f
                   review-notes: #f)))
@@ -234,7 +234,7 @@
   (let ((request (hash-ref (approval-manager-requests manager) request-id #f)))
     (if request
         (begin
-          (approval-request-status-set! request :approved)
+          (approval-request-status-set! request 'approved)
           (approval-request-reviewed-at-set! request (current-seconds))
           (approval-request-reviewed-by-set! request reviewer-id)
           (approval-request-review-notes-set! request notes)
@@ -260,7 +260,7 @@
   (let ((request (hash-ref (approval-manager-requests manager) request-id #f)))
     (if request
         (begin
-          (approval-request-status-set! request :rejected)
+          (approval-request-status-set! request 'rejected)
           (approval-request-reviewed-at-set! request (current-seconds))
           (approval-request-reviewed-by-set! request reviewer-id)
           (approval-request-review-notes-set! request reason)
@@ -335,7 +335,7 @@
                   agent-id: agent-id
                   call-id: (uuid-generate)
                   timestamp: (current-seconds)
-                  metadata: (hash))))
+                  metadata: (make-hash-table))))
 
     ;; Evaluate rules
     (let ((evaluation (rule-engine-evaluate (rule-based-dispatcher-rule-engine rbd)
@@ -347,26 +347,26 @@
 
         (cond
          ;; Deny - return error
-         ((eq? action :deny)
+         ((eq? action 'deny)
           (make-tool-call
            id: (tool-execution-context-call-id context)
            tool-name: tool-name
            arguments: arguments
            timestamp: (tool-execution-context-timestamp context)
            agent-id: agent-id
-           status: :failed
+           status: 'failed
            result: #f
            error: (format "Tool execution denied: ~a" reason)))
 
          ;; Require approval - create approval request
-         ((eq? action :require-approval)
+         ((eq? action 'require-approval)
           (let ((call (make-tool-call
                        id: (tool-execution-context-call-id context)
                        tool-name: tool-name
                        arguments: arguments
                        timestamp: (tool-execution-context-timestamp context)
                        agent-id: agent-id
-                       status: :pending
+                       status: 'pending
                        result: #f
                        error: #f)))
             (approval-manager-create-request! (rule-based-dispatcher-approval-manager rbd)
@@ -433,10 +433,10 @@
    name: "Always Allow"
    description: "Allow all tool executions"
    condition: (lambda (tool-name arguments context) #t)
-   action: :allow
+   action: 'allow
    priority: 0
    enabled: #t
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 (def (make-always-deny-rule)
   "Create rule that always denies tool execution"
@@ -445,10 +445,10 @@
    name: "Always Deny"
    description: "Deny all tool executions"
    condition: (lambda (tool-name arguments context) #t)
-   action: :deny
+   action: 'deny
    priority: 100
    enabled: #f
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 (def (make-require-approval-for-tool-rule tool-name)
   "Create rule that requires approval for specific tool"
@@ -457,10 +457,12 @@
    name: (format "Require Approval for ~a" tool-name)
    description: (format "Tool ~a requires approval" tool-name)
    condition: (lambda (tn args ctx) (equal? tn tool-name))
-   action: :require-approval
+   action: 'require-approval
    priority: 50
    enabled: #t
-   metadata: (hash 'tool tool-name)))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool tool-name)
+  ht)))
 
 (def (make-deny-tool-rule tool-name)
   "Create rule that denies specific tool"
@@ -469,10 +471,12 @@
    name: (format "Deny ~a" tool-name)
    description: (format "Tool ~a is not allowed" tool-name)
    condition: (lambda (tn args ctx) (equal? tn tool-name))
-   action: :deny
+   action: 'deny
    priority: 75
    enabled: #t
-   metadata: (hash 'tool tool-name)))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool tool-name)
+  ht)))
 
 ;;; ============================================================================
 ;;; Utilities
@@ -487,15 +491,9 @@
    Returns:
      Hash representation"
 
-  (hash 'id (approval-request-id request)
-        'tool_call (tool-call->hash (approval-request-tool-call request))
-        'requested_at (approval-request-requested-at request)
-        'requested_by (approval-request-requested-by request)
-        'reason (approval-request-reason request)
-        'status (symbol->string (approval-request-status request))
-        'reviewed_at (approval-request-reviewed-at request)
-        'reviewed_by (approval-request-reviewed-by request)
-        'review_notes (approval-request-review-notes request)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (approval-request-id request))
+  ht))
 
 (def (tool-rule->hash rule)
   "Convert tool rule to hash
@@ -506,13 +504,9 @@
    Returns:
      Hash representation"
 
-  (hash 'id (tool-rule-id rule)
-        'name (tool-rule-name rule)
-        'description (tool-rule-description rule)
-        'action (symbol->string (tool-rule-action rule))
-        'priority (tool-rule-priority rule)
-        'enabled (tool-rule-enabled rule)
-        'metadata (tool-rule-metadata rule)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (tool-rule-id rule))
+  ht))
 
 ;;; ============================================================================
 ;;; Example Usage (commented out)
@@ -532,7 +526,9 @@
 ;; Call tool - will require approval
 (def result (rule-based-dispatcher-call-tool rbd
                                              "archival_memory_insert"
-                                             (hash 'content "Test")
+                                             (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test")
+  ht)
                                              agent-id))
 
 ;; Check if approval request

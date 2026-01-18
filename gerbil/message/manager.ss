@@ -10,7 +10,11 @@
   :std/format
   :std/sort
   :std/text/json
-  :o/database/client
+;;
+  ;; ;; (
+  ;; :o/database/client (placeholder)) (placeholder)
+ (placeholder)
+
   :o/database/messages
   :o/message/types)
 
@@ -24,19 +28,18 @@
    cache-size)   ; Maximum cache size
   transparent: #t)
 
-(def (make-manager agent-id #!key (cache-size 100))
+(def (make-manager agent-id . rest (cache-size 100))
   "Create a new message manager for an agent"
   (make-message-manager
    agent-id: agent-id
-   cache: (hash)
+   cache: (make-hash-table)
    cache-size: cache-size))
 
 ;;; ============================================================================
 ;;; Message Creation
 ;;; ============================================================================
 
-(def (manager-create-message! manager role content
-                              #!key
+(def (manager-create-message! manager role content . rest
                               (tool-calls #f)
                               (tool-call-id #f)
                               (tool-name #f)
@@ -47,7 +50,10 @@
 
   ;; Validate message parameters if requested
   (when validate?
-    (let ((params (hash 'role role 'content content)))
+    (let ((params (let ((ht (make-hash-table)))
+  (hash-put! ht 'role role)
+  (hash-put! ht 'content content)
+  ht)))
       (when tool-call-id
         (hash-put! params 'tool_call_id tool-call-id))
       (when tool-name
@@ -71,13 +77,12 @@
 
     msg))
 
-(def (manager-create-user-message! manager content #!key (tokens 0))
+(def (manager-create-user-message! manager content . rest (tokens 0))
   "Create user message"
   (manager-create-message! manager "user" content
                           prompt-tokens: tokens))
 
-(def (manager-create-assistant-message! manager content
-                                        #!key
+(def (manager-create-assistant-message! manager content . rest
                                         (tool-calls #f)
                                         (prompt-tokens 0)
                                         (completion-tokens 0))
@@ -101,14 +106,14 @@
 ;;; Message Retrieval
 ;;; ============================================================================
 
-(def (manager-get-messages manager #!key (limit 50) (offset 0) (role #f))
+(def (manager-get-messages manager . rest (limit 50) (offset 0) (role #f))
   "Get messages with optional filtering"
   (message-get-list (message-manager-agent-id manager)
                     limit: limit
                     offset: offset
                     role: role))
 
-(def (manager-get-conversation manager #!key (limit 100))
+(def (manager-get-conversation manager . rest (limit 100))
   "Get full conversation history"
   (conversation-get (message-manager-agent-id manager)
                     limit: limit))
@@ -117,7 +122,7 @@
   "Get N most recent messages"
   (conversation-get-recent (message-manager-agent-id manager) n))
 
-(def (manager-get-by-role manager role #!key (limit 50))
+(def (manager-get-by-role manager role . rest (limit 50))
   "Get messages filtered by role"
   (conversation-get-by-role (message-manager-agent-id manager)
                             role
@@ -127,7 +132,7 @@
 ;;; Message Search and Filtering
 ;;; ============================================================================
 
-(def (manager-search manager query #!key (limit 10))
+(def (manager-search manager query . rest (limit 10))
   "Search messages by content"
   (message-search (message-manager-agent-id manager)
                   query
@@ -169,8 +174,7 @@
    has-prev?)    ; Whether there's a previous page
   transparent: #t)
 
-(def (manager-get-page manager page-number page-size
-                       #!key (role #f) (filter #f))
+(def (manager-get-page manager page-number page-size . rest (role #f) (filter #f))
   "Get paginated messages"
   (let* ((offset (* page-number page-size))
          (messages (if filter
@@ -226,11 +230,9 @@
 (def (manager-get-message-distribution manager)
   "Get distribution of messages by role"
   (let ((stats (manager-get-stats manager)))
-    (hash
-     'user (hash-ref stats 'user_messages)
-     'assistant (hash-ref stats 'assistant_messages)
-     'system 0  ;; Not tracked in current stats
-     'tool 0))) ;; Not tracked in current stats
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'user (hash-ref stats 'user_messages))
+  ht))) ;; Not tracked in current stats
 
 ;;; ============================================================================
 ;;; Message Caching
@@ -278,7 +280,7 @@
   (conversation-clear! (message-manager-agent-id manager))
   (manager-clear-cache! manager))
 
-(def (manager-export-conversation manager #!key (format 'json))
+(def (manager-export-conversation manager . rest (format 'json))
   "Export conversation to specified format"
   (conversation-export (message-manager-agent-id manager)
                        format: format))
@@ -292,13 +294,9 @@
 (def (manager-get-conversation-summary manager)
   "Get summary of conversation"
   (let ((stats (manager-get-stats manager)))
-    (hash
-     'agent_id (message-manager-agent-id manager)
-     'total_messages (hash-ref stats 'total_messages)
-     'total_tokens (hash-ref stats 'total_tokens)
-     'first_message_at (hash-ref stats 'first_message_at)
-     'last_message_at (hash-ref stats 'last_message_at)
-     'message_distribution (manager-get-message-distribution manager))))
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'agent_id (message-manager-agent-id manager))
+  ht)))
 
 ;;; ============================================================================
 ;;; Message Utilities
@@ -395,7 +393,7 @@
 ;;; Advanced Search
 ;;; ============================================================================
 
-(def (manager-search-with-context manager query #!key (context-size 2))
+(def (manager-search-with-context manager query . rest (context-size 2))
   "Search messages and include surrounding context"
   (let* ((matches (manager-search manager query limit: 100))
          (all-messages (manager-get-conversation manager))
@@ -413,15 +411,17 @@
                                (+ match-idx context-size 1)))
                   (context (take (drop all-messages start-idx)
                                 (- end-idx start-idx))))
-             (set! results (cons (hash 'match match
-                                      'context context
-                                      'match_index match-idx)
+             (set! results (cons (let ((ht (make-hash-table)))
+  (hash-put! ht 'match match)
+  (hash-put! ht 'context context)
+  (hash-put! ht 'match_index match-idx)
+  ht)
                                 results))))))
      matches)
 
     (reverse results)))
 
-(def (manager-find-tool-calls manager #!key (tool-name #f) (limit 50))
+(def (manager-find-tool-calls manager . rest (tool-name #f) (limit 50))
   "Find messages with tool calls"
   (let ((messages (manager-get-by-role manager "assistant" limit: limit)))
     (filter (lambda (msg)
@@ -444,18 +444,18 @@
 ;;; Message Formatting
 ;;; ============================================================================
 
-(def (manager-format-message msg #!key (format 'text))
+(def (manager-format-message msg . rest (format 'text))
   "Format message for display"
   (case format
-    ((text)
+    (('text) 
      (format "~a: ~a"
              (hash-ref msg 'role)
              (hash-ref msg 'content)))
 
-    ((json)
+    (('json) 
      (json-object->string msg))
 
-    ((markdown)
+    (('markdown) 
      (format "**~a**: ~a"
              (hash-ref msg 'role)
              (hash-ref msg 'content)))
@@ -463,23 +463,24 @@
     (else
      (error "Unsupported format" format: format))))
 
-(def (manager-format-conversation manager #!key (format 'text) (limit 100))
+(def (manager-format-conversation manager . rest (format 'text) (limit 100))
   "Format entire conversation"
   (let ((messages (manager-get-conversation manager limit: limit)))
     (case format
-      ((text)
+      (('text) 
        (string-join
         (map (lambda (msg)
                (manager-format-message msg format: 'text))
              messages)
         "\n"))
 
-      ((json)
+      (('json) 
        (json-object->string
-        (hash 'agent_id (message-manager-agent-id manager)
-              'messages messages)))
+        (let ((ht (make-hash-table)))
+  (hash-put! ht 'agent_id (message-manager-agent-id manager))
+  ht)))
 
-      ((markdown)
+      (('markdown) 
        (string-join
         (map (lambda (msg)
                (manager-format-message msg format: 'markdown))

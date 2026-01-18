@@ -42,23 +42,16 @@
 
                       ;; Non-streaming response
                       (make-json-response
-                       (hash
-                        'id message-id
-                        'agent_id agent-id
-                        'messages (list
+                       (let ((ht (make-hash-table)))
+  (hash-put! ht 'id message-id)
+  (hash-put! ht 'agent_id agent-id)
+  (hash-put! ht 'messages (list
                                    (hash
                                     'role "user"
                                     'content user-message
-                                    'timestamp (current-seconds))
-                                   (hash
-                                    'role "assistant"
-                                    'content "This is a mock response. Agent processing not yet implemented."
                                     'timestamp (current-seconds)))
-                        'usage (hash
-                                'prompt_tokens 10
-                                'completion_tokens 15
-                                'total_tokens 25)
-                        'created_at (current-seconds))
+                                   (hash ('role "assistant") ('content "This is a mock response. Agent processing not yet implemented.") ('timestamp (current-seconds))))
+  ht)
                        status: 201))))))))))
 
 (def (get-messages-handler req)
@@ -73,24 +66,18 @@
 
           ;; TODO: Actually fetch messages from database
           (make-json-response
-           (hash
-            'messages (list
+           (let ((ht (make-hash-table)))
+  (hash-put! ht 'messages (list
                        (hash
                         'id "msg-1"
                         'role "user"
                         'content "Hello!"
-                        'timestamp (current-seconds))
-                       (hash
-                        'id "msg-2"
-                        'role "assistant"
-                        'content "Hi there! How can I help you?"
                         'timestamp (current-seconds)))
-            'total 2
-            'limit (string->number limit)
-            'offset (string->number offset)))))))
+                       (hash ('id "msg-2") ('role "assistant") ('content "Hi there! How can I help you?") ('timestamp (current-seconds))))
+  ht))))))
 
 (def (get-message-handler req)
-  "GET /v1/agents/:id/messages/:message_id - Get specific message"
+  "GET /v1/agents/:id/messages/'message_id - Get specific message"
   (let ((agent-id (get-path-param req 'id))
         (message-id (get-path-param req 'message_id)))
 
@@ -102,15 +89,16 @@
 
             ;; TODO: Actually fetch message from database
             (make-json-response
-             (hash
-              'id message-id
-              'agent_id agent-id
-              'role "user"
-              'content "Hello!"
-              'timestamp (current-seconds)))))))
+             (let ((ht (make-hash-table)))
+  (hash-put! ht 'id message-id)
+  (hash-put! ht 'agent_id agent-id)
+  (hash-put! ht 'role "user")
+  (hash-put! ht 'content "Hello!")
+  (hash-put! ht 'timestamp (current-seconds))
+  ht))))))
 
 (def (delete-message-handler req)
-  "DELETE /v1/agents/:id/messages/:message_id - Delete message"
+  "DELETE /v1/agents/:id/messages/'message_id - Delete message"
   (let ((agent-id (get-path-param req 'id))
         (message-id (get-path-param req 'message_id)))
 
@@ -122,9 +110,10 @@
 
             ;; TODO: Actually delete message from database
             (make-json-response
-             (hash
-              'deleted #t
-              'id message-id))))))
+             (let ((ht (make-hash-table)))
+  (hash-put! ht 'deleted #t)
+  (hash-put! ht 'id message-id)
+  ht))))))
 
 ;;; ============================================================================
 ;;; Conversation Management
@@ -141,32 +130,18 @@
 
           ;; TODO: Actually fetch conversation from database
           (make-json-response
-           (hash
-            'agent_id agent-id
-            'messages (list
+           (let ((ht (make-hash-table)))
+  (hash-put! ht 'agent_id agent-id)
+  (hash-put! ht 'messages (list
                        (hash
                         'id "msg-1"
                         'role "user"
                         'content "Hello!"
-                        'timestamp (- (current-seconds) 100))
-                       (hash
-                        'id "msg-2"
-                        'role "assistant"
-                        'content "Hi! How can I help?"
-                        'timestamp (- (current-seconds) 90))
-                       (hash
-                        'id "msg-3"
-                        'role "user"
-                        'content "Tell me about yourself."
-                        'timestamp (- (current-seconds) 80))
-                       (hash
-                        'id "msg-4"
-                        'role "assistant"
-                        'content "I'm an AI assistant here to help you."
-                        'timestamp (- (current-seconds) 70)))
-            'total 4
-            'limit (string->number limit)
-            'offset (string->number offset)))))))
+                        'timestamp (- (current-seconds)) 100))
+                       (hash ('id "msg-2") ('role "assistant") ('content "Hi! How can I help?") ('timestamp (- (current-seconds)) 90))
+                       (hash ('id "msg-3") ('role "user") ('content "Tell me about yourself.") ('timestamp (- (current-seconds)) 80))
+                       (hash ('id "msg-4") ('role "assistant") ('content "I'm an AI assistant here to help you.") ('timestamp (- (current-seconds)) 70)))
+  ht))))))
 
 (def (clear-conversation-handler req)
   "DELETE /v1/agents/:id/conversation - Clear conversation history"
@@ -176,9 +151,10 @@
 
         ;; TODO: Actually clear conversation from database
         (make-json-response
-         (hash
-          'cleared #t
-          'agent_id agent-id)))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'cleared #t)
+  (hash-put! ht 'agent_id agent-id)
+  ht)))))
 
 ;;; ============================================================================
 ;;; Message Search
@@ -205,17 +181,17 @@
 
                   ;; TODO: Actually search messages in database
                   (make-json-response
-                   (hash
-                    'query query
-                    'search_type search-type
-                    'results (list
+                   (let ((ht (make-hash-table)))
+  (hash-put! ht 'query query)
+  (hash-put! ht 'search_type search-type)
+  (hash-put! ht 'results (list
                               (hash
                                'id "msg-1"
                                'role "user"
                                'content "Hello!"
-                               'timestamp (current-seconds)
+                               'timestamp (current-seconds))
                                'score 0.95))
-                    'total 1))))))))))
+  ht))))))))))
 
 ;;; ============================================================================
 ;;; Message Statistics
@@ -229,15 +205,15 @@
 
         ;; TODO: Actually calculate stats from database
         (make-json-response
-         (hash
-          'agent_id agent-id
-          'total_messages 100
-          'user_messages 50
-          'assistant_messages 50
-          'total_tokens 5000
-          'avg_message_length 50
-          'first_message_at (- (current-seconds) 86400)
-          'last_message_at (current-seconds))))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'agent_id agent-id)
+  (hash-put! ht 'total_messages 100)
+  (hash-put! ht 'user_messages 50)
+  (hash-put! ht 'assistant_messages 50)
+  (hash-put! ht 'total_tokens 5000)
+  (hash-put! ht 'avg_message_length 50)
+  (hash-put! ht 'first_message_at (- (current-seconds)) 86400)
+  ht)))))
 
 ;;; ============================================================================
 ;;; Utility Functions

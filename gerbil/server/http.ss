@@ -27,8 +27,7 @@
    handler)      ; request handler function
   transparent: #t)
 
-(def (make-http-server-config-instance
-      #!key
+(def (make-http-server-config-instance . rest
       (host "0.0.0.0")
       (port 8283)
       (max-connections 100)
@@ -51,16 +50,16 @@
 (defstruct http-request
   (method        ; HTTP method (:GET :POST :PUT :DELETE :PATCH)
    path          ; request path
-   query-params  ; query parameters (hash)
-   headers       ; request headers (hash)
+   query-params  ; query parameters (make-hash-table)
+   headers       ; request headers (make-hash-table)
    body          ; request body (string or #f)
-   json          ; parsed JSON body (hash or #f)
-   params)       ; path parameters (hash)
+   json          ; parsed JSON body (make-hash-table)
+   params)       ; path parameters (make-hash-table)
   transparent: #t)
 
 (defstruct http-response
   (status        ; HTTP status code
-   headers       ; response headers (hash)
+   headers       ; response headers (make-hash-table)
    body)         ; response body (string)
   transparent: #t)
 
@@ -87,12 +86,12 @@
      headers: headers
      body: body
      json: json
-     params: (hash))))
+     params: (make-hash-table))))
 
 (def (parse-query-string query-str)
   "Parse query string into hash"
   (if (or (not query-str) (equal? query-str ""))
-      (hash)
+      (make-hash-table)
       (let ((pairs (string-split query-str #\&)))
         (list->hash
          (map (lambda (pair)
@@ -113,33 +112,38 @@
 ;;; Response Building
 ;;; ============================================================================
 
-(def (make-json-response data #!key (status 200))
+(def (make-json-response data . rest (status 200))
   "Create JSON response"
   (make-http-response
    status: status
-   headers: (hash "content-type" "application/json")
+   headers: (make-hash-table)
    body: (json-object->string data)))
 
-(def (make-text-response text #!key (status 200))
+(def (make-text-response text . rest (status 200))
   "Create text response"
   (make-http-response
    status: status
-   headers: (hash "content-type" "text/plain")
+   headers: (make-hash-table)
    body: text))
 
-(def (make-html-response html #!key (status 200))
+(def (make-html-response html . rest (status 200))
   "Create HTML response"
   (make-http-response
    status: status
-   headers: (hash "content-type" "text/html")
+   headers: (make-hash-table)
    body: html))
 
-(def (make-error-response message #!key (status 500) (details #f))
+(def (make-error-response message . rest (status 500) (details #f))
   "Create error response"
   (make-json-response
    (if details
-       (hash 'error message 'details details)
-       (hash 'error message))
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'error message)
+  (hash-put! ht 'details details)
+  ht)
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'error message)
+  ht))
    status: status))
 
 ;;; ============================================================================
@@ -251,12 +255,16 @@
 (def (my-handler req)
   (case (http-request-method req)
     ((:GET)
-     (make-json-response (hash 'message "Hello, World!")))
+     (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Hello, World!")
+  ht)))
 
     ((:POST)
      (if (http-request-json req)
          (make-json-response
-          (hash 'received (http-request-json req)))
+          (let ((ht (make-hash-table)))
+  (hash-put! ht 'received (http-request-json req))
+  ht))
          (make-error-response "Expected JSON body" status: 400)))
 
     (else

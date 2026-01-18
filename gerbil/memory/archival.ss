@@ -10,7 +10,11 @@
   :std/format
   :std/text/json
   :std/sort
-  :o/database/client
+;;
+  ;; ;; (
+  ;; :o/database/client (placeholder)) (placeholder)
+ (placeholder)
+
   :o/llm/client
   :o/memory/types)
 
@@ -26,16 +30,15 @@
    cache-enabled)   ; Is caching enabled?
   transparent: #t)
 
-(def (make-archival-manager agent-id
-                            #!key
-                            (llm-provider :openai)
+(def (make-archival-manager agent-id . rest
+                            (llm-provider 'openai)
                             (llm-model "text-embedding-3-small")
                             (cache-enabled #t))
   "Create archival memory manager
 
    Args:
      agent-id: Agent ID
-     llm-provider: LLM provider for embeddings (default: :openai)
+     llm-provider: LLM provider for embeddings (default: 'openai)
      llm-model: Embedding model (default: text-embedding-3-small)
      cache-enabled: Enable caching (default: #t)
 
@@ -46,7 +49,7 @@
    agent-id: agent-id
    llm-provider: llm-provider
    llm-model: llm-model
-   cache: (hash)
+   cache: (make-hash-table)
    cache-enabled: cache-enabled))
 
 ;;; ============================================================================
@@ -95,8 +98,7 @@
 ;;; Archival Entry Creation
 ;;; ============================================================================
 
-(def (archival-insert! manager content
-                       #!key
+(def (archival-insert! manager content . rest
                        (importance 0.5)
                        (tags '())
                        (generate-embedding? #t))
@@ -113,9 +115,11 @@
      Created entry"
 
   ;; Validate parameters
-  (let ((params (hash 'content content
-                      'importance importance
-                      'tags tags)))
+  (let ((params (let ((ht (make-hash-table)))
+  (hash-put! ht 'content content)
+  (hash-put! ht 'importance importance)
+  (hash-put! ht 'tags tags)
+  ht)))
     (let ((result (validate-archival-params params)))
       (unless (car result)
         (error "Invalid archival parameters" errors: (cdr result)))))
@@ -128,10 +132,12 @@
     ;; Create entry via database
     (let ((entry (db-create-archival-entry
                   (archival-manager-agent-id manager)
-                  (hash 'content content
-                        'embedding embedding
-                        'importance importance
-                        'tags tags))))
+                  (let ((ht (make-hash-table)))
+  (hash-put! ht 'content content)
+  (hash-put! ht 'embedding e)
+  (hash-put! ht 'importance importance)
+  (hash-put! ht 'tags tags)
+  ht))))
 
       ;; Add to cache
       (when (archival-manager-cache-enabled manager)
@@ -183,7 +189,7 @@
       ;; No cache, query database
       (db-get-archival-entry (archival-manager-agent-id manager) entry-id)))
 
-(def (archival-get-all manager #!key (limit 100) (offset 0))
+(def (archival-get-all manager . rest (limit 100) (offset 0))
   "Get all archival entries
 
    Args:
@@ -214,7 +220,7 @@
 ;;; Text-Based Search
 ;;; ============================================================================
 
-(def (archival-search manager query #!key (limit 10))
+(def (archival-search manager query . rest (limit 10))
   "Search archival memory by text content
 
    Args:
@@ -238,7 +244,7 @@
         ;; Return top N results
         (take sorted (min limit (length sorted)))))))
 
-(def (archival-search-by-tags manager tags #!key (limit 10))
+(def (archival-search-by-tags manager tags . rest (limit 10))
   "Search archival memory by tags
 
    Args:
@@ -265,7 +271,7 @@
                               (hash-ref b 'importance 0.5))))))
         (take sorted (min limit (length sorted)))))))
 
-(def (archival-search-by-importance manager min-importance #!key (limit 10))
+(def (archival-search-by-importance manager min-importance . rest (limit 10))
   "Search archival memory by importance threshold
 
    Args:
@@ -392,7 +398,9 @@
    Returns:
      Updated entry"
 
-  (archival-update! manager entry-id (hash 'importance importance)))
+  (archival-update! manager entry-id (let ((ht (make-hash-table)))
+  (hash-put! ht 'importance importance)
+  ht)))
 
 (def (archival-add-tags! manager entry-id new-tags)
   "Add tags to entry
@@ -409,7 +417,9 @@
     (when entry
       (let ((current-tags (hash-ref entry 'tags '())))
         (let ((updated-tags (append current-tags new-tags)))
-          (archival-update! manager entry-id (hash 'tags updated-tags)))))))
+          (archival-update! manager entry-id (let ((ht (make-hash-table)))
+  (hash-put! ht 'tags updated-tags)
+  ht)))))))
 
 ;;; ============================================================================
 ;;; Archival Entry Deletion
@@ -497,23 +507,9 @@
      Statistics hash"
 
   (let ((entries (archival-get-all manager limit: 100000)))
-    (hash
-     'total_entries (length entries)
-     'total_size (apply + (map archival-entry-size entries))
-     'avg_importance (if (null? entries)
-                         0.0
-                         (/ (apply + (map (lambda (e)
-                                           (hash-ref e 'importance 0.5))
-                                         entries))
-                            (length entries)))
-     'entries_with_embeddings (length (filter (lambda (e)
-                                                (hash-ref e 'embedding #f))
-                                             entries))
-     'unique_tags (length (remove-duplicates
-                          (apply append
-                                (map (lambda (e)
-                                      (hash-ref e 'tags '()))
-                                    entries)))))))
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'total_entries (length entries))
+  ht)))
 
 ;;; ============================================================================
 ;;; Archival Caching
@@ -562,7 +558,7 @@
 ;;; Export/Import
 ;;; ============================================================================
 
-(def (archival-export manager #!key (format 'json) (include-embeddings? #f))
+(def (archival-export manager . rest (format 'json) (include-embeddings? #f))
   "Export archival memory
 
    Args:
@@ -575,7 +571,7 @@
 
   (let ((entries (archival-get-all manager limit: 100000)))
     (case format
-      ((json)
+      (('json) 
        (let ((export-entries
               (if include-embeddings?
                   entries
@@ -585,10 +581,11 @@
                            copy))
                        entries))))
          (json-object->string
-          (hash 'agent_id (archival-manager-agent-id manager)
-                'entries export-entries))))
+          (let ((ht (make-hash-table)))
+  (hash-put! ht 'agent_id (archival-manager-agent-id manager))
+  ht))))
 
-      ((text)
+      (('text) 
        (string-join
         (map (lambda (e)
                (format "[~a] (importance: ~a)~a~a~a~a"
@@ -611,7 +608,7 @@
 
    Args:
      manager: Archival manager
-     data: Exported data (hash with entries)"
+     data: Exported data (make-hash-table)"
 
   (let ((entries (hash-ref data 'entries)))
     (for-each

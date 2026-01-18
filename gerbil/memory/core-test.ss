@@ -107,46 +107,65 @@
     (test-case "Apply single append patch"
       (let ((manager (setup-test-manager)))
         (def result (memory-apply-patch! manager "persona"
-                                        (hash 'op "append" 'value "Patched.")))
+                                        (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "append")
+  (hash-put! ht 'value "Patched.")
+  ht)))
         (check (string-contains result "Patched."))))
 
     (test-case "Apply single replace patch"
       (let ((manager (setup-test-manager)))
         (def result (memory-apply-patch! manager "persona"
-                                        (hash 'op "replace"
-                                              'old "test"
-                                              'new "production")))
+                                        (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "replace")
+  (hash-put! ht 'old "test")
+  (hash-put! ht 'new "production")
+  ht)))
         (check (string-contains result "production"))))
 
     (test-case "Apply set patch"
       (let ((manager (setup-test-manager)))
         (def result (memory-apply-patch! manager "persona"
-                                        (hash 'op "set" 'value "New content.")))
+                                        (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "set")
+  (hash-put! ht 'value "New content.")
+  ht)))
         (check (equal? result "New content."))))
 
     (test-case "Apply clear patch"
       (let ((manager (setup-test-manager)))
         (def result (memory-apply-patch! manager "persona"
-                                        (hash 'op "clear")))
+                                        (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "clear")
+  ht)))
         (check (equal? result ""))))
 
     (test-case "Apply prepend patch"
       (let ((manager (setup-test-manager)))
         (def result (memory-apply-patch! manager "persona"
-                                        (hash 'op "prepend" 'value "Prefix: ")))
+                                        (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "prepend")
+  (hash-put! ht 'value "Prefix: ")
+  ht)))
         (check (string-prefix? "Prefix: " result))))
 
     (test-case "Apply multiple patches"
       (let ((manager (setup-test-manager)))
         (def result (memory-apply-patch! manager "persona"
-                                        (list (hash 'op "append" 'value " First.")
-                                              (hash 'op "append" 'value " Second."))))
+                                        (list (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "append")
+  (hash-put! ht 'value " First.")
+  ht)
+                                              (hash ('op "append") ('value " Second.")))))
         (check (string-contains result "First."))
         (check (string-contains result "Second."))))
 
     (test-case "Patch records history"
       (let ((manager (setup-test-manager)))
-        (memory-apply-patch! manager "persona" (hash 'op "append" 'value "Test."))
+        (memory-apply-patch! manager "persona" (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "append")
+  (hash-put! ht 'value "Test.")
+  ht))
         (def history (core-memory-manager-history manager))
         (def changes (history-get-changes history limit: 1))
         (check (equal? (memory-change-operation (car changes)) 'patch))))))
@@ -296,7 +315,10 @@
       (let ((manager (setup-test-manager)))
         (core-memory-append! manager "persona" "Change 1.")
         (core-memory-replace! manager "persona" "test" "production")
-        (memory-apply-patch! manager "persona" (hash 'op "append" 'value "Change 2."))
+        (memory-apply-patch! manager "persona" (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "append")
+  (hash-put! ht 'value "Change 2.")
+  ht))
         (def history (core-memory-manager-history manager))
         (def changes (history-get-changes history limit: 10))
         (check (= (length changes) 3))))

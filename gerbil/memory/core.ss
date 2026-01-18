@@ -31,7 +31,7 @@
    max-history)     ; Maximum history size
   transparent: #t)
 
-(def (make-memory-history agent-id #!key (max-history 100))
+(def (make-memory-history agent-id . rest (max-history 100))
   "Create memory history tracker"
   (make-memory-history
    agent-id: agent-id
@@ -50,7 +50,7 @@
             (take (memory-history-changes history)
                   (memory-history-max-history history))))))
 
-(def (history-get-changes history #!key (limit 10))
+(def (history-get-changes history . rest (limit 10))
   "Get recent changes"
   (take (memory-history-changes history)
         (min limit (length (memory-history-changes history)))))
@@ -71,8 +71,7 @@
    constraints)     ; Memory constraints
   transparent: #t)
 
-(def (make-core-memory-manager agent-id
-                               #!key
+(def (make-core-memory-manager agent-id . rest
                                (cache-enabled #t)
                                (max-history 100)
                                (constraints #f))
@@ -142,8 +141,7 @@
 ;;; Core Memory Append
 ;;; ============================================================================
 
-(def (core-memory-append! manager block-label text
-                          #!key
+(def (core-memory-append! manager block-label text . rest
                           (separator "\n")
                           (validate? #t))
   "Append text to memory block
@@ -185,7 +183,10 @@
                      block-label: block-label
                      old-value: old-value
                      new-value: new-value
-                     metadata: (hash 'text text 'separator separator))))
+                     metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'text text)
+  (hash-put! ht 'separator separator)
+  ht))))
         (history-add-change! (core-memory-manager-history manager) change))
 
       ;; Update block
@@ -198,8 +199,7 @@
 ;;; Core Memory Replace
 ;;; ============================================================================
 
-(def (core-memory-replace! manager block-label old-text new-text
-                           #!key
+(def (core-memory-replace! manager block-label old-text new-text . rest
                            (validate? #t)
                            (case-sensitive? #t))
   "Replace text in memory block
@@ -246,9 +246,11 @@
                      block-label: block-label
                      old-value: old-value
                      new-value: new-value
-                     metadata: (hash 'old_text old-text
-                                    'new_text new-text
-                                    'case_sensitive case-sensitive?))))
+                     metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'old_text old-text)
+  (hash-put! ht 'new_text new-text)
+  (hash-put! ht 'case_sensitive case-sensitive?)
+  ht))))
         (history-add-change! (core-memory-manager-history manager) change))
 
       ;; Update block
@@ -302,15 +304,14 @@
       (else
        (error "Unknown patch operation" op: op)))))
 
-(def (memory-apply-patch! manager block-label patch
-                          #!key
+(def (memory-apply-patch! manager block-label patch . rest
                           (validate? #t))
   "Apply JSON patch to memory block
 
    Args:
      manager: Core memory manager
      block-label: Block label
-     patch: Patch specification (hash or list of operations)
+     patch: Patch specification (make-hash-table)
      validate?: Validate constraints (default: #t)
 
    Patch format:
@@ -322,7 +323,10 @@
 
    Example:
      (memory-apply-patch! manager \"persona\"
-                         (hash 'op \"append\" 'value \"I am helpful.\"))"
+                         (let ((ht (make-hash-table)))
+  (hash-put! ht 'op \"append\")
+  (hash-put! ht 'value \"I)
+  ht))"
 
   (let* ((block-mgr (core-memory-manager-block-manager manager))
          (old-value (block-get-value block-mgr block-label)))
@@ -353,7 +357,9 @@
                        block-label: block-label
                        old-value: old-value
                        new-value: new-value
-                       metadata: (hash 'patch patch))))
+                       metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'patch patch)
+  ht))))
           (history-add-change! (core-memory-manager-history manager) change))
 
         ;; Update block
@@ -366,7 +372,7 @@
 ;;; Memory Rollback
 ;;; ============================================================================
 
-(def (memory-rollback! manager block-label #!key (steps 1))
+(def (memory-rollback! manager block-label . rest (steps 1))
   "Rollback memory block to previous state
 
    Args:
@@ -401,7 +407,9 @@
                      block-label: block-label
                      old-value: (block-get-value block-mgr block-label)
                      new-value: old-value
-                     metadata: (hash 'steps steps))))
+                     metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'steps steps)
+  ht))))
         (history-add-change! history change))
 
       (displayln (format "Rolled back block ~a by ~a steps" block-label steps))
@@ -446,7 +454,9 @@
                        block-label: block-label
                        old-value: (block-get-value block-mgr block-label)
                        new-value: old-value
-                       metadata: (hash 'target_timestamp timestamp))))
+                       metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'target_timestamp timestamp)
+  ht))))
           (history-add-change! history change))
 
         (displayln (format "Rolled back block ~a to timestamp ~a"
@@ -513,21 +523,30 @@
 ;;; Convenience Functions
 ;;; ============================================================================
 
-(def (core-memory-set-block! manager block-label value #!key (validate? #t))
+(def (core-memory-set-block! manager block-label value . rest (validate? #t))
   "Set block value directly (replaces entire content)"
   (memory-apply-patch! manager block-label
-                      (hash 'op "set" 'value value)
+                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "set")
+  (hash-put! ht 'value value)
+  ht)
                       validate?: validate?))
 
 (def (core-memory-clear-block! manager block-label)
   "Clear block content"
   (memory-apply-patch! manager block-label
-                      (hash 'op "clear")))
+                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "clear")
+  ht)))
 
-(def (core-memory-prepend! manager block-label text #!key (separator "\n"))
+(def (core-memory-prepend! manager block-label text . rest (separator "\n"))
   "Prepend text to memory block"
   (memory-apply-patch! manager block-label
-                      (hash 'op "prepend" 'value text 'separator separator)))
+                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "prepend")
+  (hash-put! ht 'value text)
+  (hash-put! ht 'separator separator)
+  ht)))
 
 ;;; ============================================================================
 ;;; Example Usage (commented out)
@@ -548,8 +567,11 @@
 
 ;; Apply patch
 (memory-apply-patch! manager "human"
-                    (list (hash 'op "append" 'value "User is a developer.")
-                          (hash 'op "append" 'value "User prefers concise answers.")))
+                    (list (let ((ht (make-hash-table)))
+  (hash-put! ht 'op "append")
+  (hash-put! ht 'value "User is a developer.")
+  ht)
+                          (hash ('op "append") ('value "User prefers concise answers."))))
 
 ;; Rollback
 (memory-rollback! manager "persona" steps: 1)

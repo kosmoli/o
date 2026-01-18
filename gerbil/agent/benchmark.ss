@@ -64,7 +64,7 @@
    warmup-iterations: 2
    timeout: 60
    collect-memory: #f
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Timing Utilities
@@ -209,7 +209,7 @@
      stddev-time: stddev
      throughput: throughput
      memory-used: #f
-     metadata: (hash))))
+     metadata: (make-hash-table))))
 
 ;;; ============================================================================
 ;;; Benchmark Reporting
@@ -278,7 +278,7 @@
 ;;; Agent Execution Benchmarks
 ;;; ============================================================================
 
-(def (benchmark-step-execution executor context step-type input #!key (config #f))
+(def (benchmark-step-execution executor context step-type input . rest (config #f))
   "Benchmark single step execution
 
    Args:
@@ -305,7 +305,7 @@
                 input))
      (execute-step executor context step))))
 
-(def (benchmark-agent-execution executor context #!key (config #f))
+(def (benchmark-agent-execution executor context . rest (config #f))
   "Benchmark full agent execution
 
    Args:
@@ -337,16 +337,9 @@
    Returns:
      Hash representation"
 
-  (hash 'name (benchmark-result-name result)
-        'iterations (benchmark-result-iterations result)
-        'total_time (benchmark-result-total-time result)
-        'mean_time (benchmark-result-mean-time result)
-        'min_time (benchmark-result-min-time result)
-        'max_time (benchmark-result-max-time result)
-        'stddev_time (benchmark-result-stddev-time result)
-        'throughput (benchmark-result-throughput result)
-        'memory_used (benchmark-result-memory-used result)
-        'metadata (benchmark-result-metadata result)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'name (benchmark-result-name result))
+  ht))
 
 (def (benchmark-suite->hash suite)
   "Convert benchmark suite to hash
@@ -357,7 +350,6 @@
    Returns:
      Hash representation"
 
-  (hash 'name (benchmark-suite-name suite)
-        'benchmarks (map benchmark-result->hash (benchmark-suite-benchmarks suite))
-        'total_time (benchmark-suite-total-time suite)
-        'metadata (benchmark-suite-metadata suite)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'name (benchmark-suite-name suite))
+  ht))

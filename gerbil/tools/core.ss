@@ -10,7 +10,11 @@
   :std/format
   :std/text/json
   :std/sort
-  :o/database/client
+;;
+  ;; ;; (
+  ;; :o/database/client (placeholder)) (placeholder)
+ (placeholder)
+
   :o/message/manager
   :o/tools/types)
 
@@ -25,8 +29,8 @@
      Tool registry structure"
 
   (make-tool-registry
-   tools: (hash)
-   categories: (hash)))
+   tools: (make-hash-table)
+   categories: (make-hash-table)))
 
 (def (registry-register-tool! registry tool-def)
   "Register tool in registry
@@ -70,7 +74,7 @@
 
   (hash-ref (tool-registry-tools registry) name #f))
 
-(def (registry-list-tools registry #!key (category #f))
+(def (registry-list-tools registry . rest (category #f))
   "List all tools or tools in category
 
    Args:
@@ -106,7 +110,7 @@
    Args:
      registry: Tool registry
      tool-name: Tool name
-     arguments: Tool arguments (hash)
+     arguments: Tool arguments (make-hash-table)
      context: Execution context
 
    Returns:
@@ -151,27 +155,32 @@
 
       ;; Create assistant message
       (let ((message (message-create! manager
-                                     :assistant
+                                     'assistant
                                      message-text)))
 
         (make-success-result
-         (hash 'message_id (hash-ref message 'id)
-               'content message-text
-               'timestamp (hash-ref message 'created_at))
-         metadata: (hash 'tool "send_message"))))))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'message_id (hash-ref message 'id))
+  ht)
+         metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool "send_message")
+  ht))))))
 
 (def send-message-tool
   (make-tool-definition
    name: "send_message"
    description: "Send a message to the user. Use this tool to communicate with the user, respond to their queries, or provide information."
-   parameters: (hash
-                'message (hash 'type :string
+   parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'message (hash 'type 'string
                               'description "The message content to send to the user"
                               'required #t))
+  ht)
    handler: send-message-handler
-   category: :core
+   category: 'core
    requires-approval: #f
-   metadata: (hash 'version "1.0")))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0")
+  ht)))
 
 ;;; ============================================================================
 ;;; Core Tool: conversation_search
@@ -203,39 +212,35 @@
         ;; Format results
         (let ((formatted-results
                (map (lambda (msg)
-                     (hash 'id (hash-ref msg 'id)
-                           'role (symbol->string (hash-ref msg 'role))
-                           'content (hash-ref msg 'content)
-                           'timestamp (hash-ref msg 'created_at)))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (hash-ref msg 'id))
+  ht))
                    results)))
 
           (make-success-result
-           (hash 'results formatted-results
-                 'count (length formatted-results)
-                 'query query
-                 'page page)
-           metadata: (hash 'tool "conversation_search")))))))
+           (let ((ht (make-hash-table)))
+  (hash-put! ht 'results formatted-results)
+  (hash-put! ht 'count (length formatted-results))
+  ht)
+           metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'tool "conversation_search")
+  ht)))))))
 
 (def conversation-search-tool
   (make-tool-definition
    name: "conversation_search"
    description: "Search through conversation history. Use this tool to find previous messages, recall past discussions, or retrieve specific information from the conversation."
-   parameters: (hash
-                'query (hash 'type :string
+   parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'query (hash 'type 'string
                             'description "Search query to find matching messages"
-                            'required #t)
-                'limit (hash 'type :integer
-                            'description "Maximum number of results to return"
-                            'required #f
-                            'default 10)
-                'page (hash 'type :integer
-                           'description "Page number for pagination (0-indexed)"
-                           'required #f
-                           'default 0))
+                            'required #t))
+  ht)
    handler: conversation-search-handler
-   category: :core
+   category: 'core
    requires-approval: #f
-   metadata: (hash 'version "1.0")))
+   metadata: (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0")
+  ht)))
 
 ;;; ============================================================================
 ;;; Tool Dispatcher
@@ -289,7 +294,7 @@
                arguments: arguments
                timestamp: (current-seconds)
                agent-id: agent-id
-               status: :pending
+               status: 'pending
                result: #f
                error: #f)))
 
@@ -297,7 +302,7 @@
     (let ((tool-def (registry-get-tool (tool-dispatcher-registry dispatcher) tool-name)))
       (if (not tool-def)
           (begin
-            (tool-call-status-set! call :failed)
+            (tool-call-status-set! call 'failed)
             (tool-call-error-set! call (format "Tool not found: ~a" tool-name))
             call)
 
@@ -323,7 +328,7 @@
      Updated tool call structure"
 
   ;; Update status to executing
-  (tool-call-status-set! call :executing)
+  (tool-call-status-set! call 'executing)
 
   ;; Create execution context
   (let ((context (make-tool-execution-context
@@ -331,7 +336,7 @@
                   call-id: (tool-call-id call)
                   arguments: (tool-call-arguments call)
                   timestamp: (current-seconds)
-                  metadata: (hash))))
+                  metadata: (make-hash-table))))
 
     ;; Execute tool
     (let ((result (execute-tool (tool-dispatcher-registry dispatcher)
@@ -342,10 +347,10 @@
       ;; Update call with result
       (if (tool-result-success result)
           (begin
-            (tool-call-status-set! call :completed)
+            (tool-call-status-set! call 'completed)
             (tool-call-result-set! call (tool-result-value result)))
           (begin
-            (tool-call-status-set! call :failed)
+            (tool-call-status-set! call 'failed)
             (tool-call-error-set! call (tool-result-error result))))
 
       ;; Add to history
@@ -378,7 +383,7 @@
                        (tool-dispatcher-approval-queue dispatcher)))
 
           ;; Update status and execute
-          (tool-call-status-set! call :approved)
+          (tool-call-status-set! call 'approved)
           (dispatcher-execute-call! dispatcher call)))))
 
 (def (dispatcher-reject-call! dispatcher call-id reason)
@@ -403,7 +408,7 @@
                        (tool-dispatcher-approval-queue dispatcher)))
 
           ;; Update status
-          (tool-call-status-set! call :rejected)
+          (tool-call-status-set! call 'rejected)
           (tool-call-error-set! call reason)
 
           ;; Add to history
@@ -428,7 +433,7 @@
       (find (lambda (c) (equal? (tool-call-id c) call-id))
            (tool-dispatcher-approval-queue dispatcher))))
 
-(def (dispatcher-get-history dispatcher #!key (limit 10))
+(def (dispatcher-get-history dispatcher . rest (limit 10))
   "Get tool call history
 
    Args:
@@ -498,7 +503,9 @@
 ;; Call send_message tool
 (def call (dispatcher-call-tool dispatcher
                                "send_message"
-                               (hash 'message "Hello, user!")
+                               (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Hello, user!")
+  ht)
                                agent-id))
 
 ;; Check result
@@ -508,7 +515,10 @@
 ;; Search conversation
 (def search-call (dispatcher-call-tool dispatcher
                                       "conversation_search"
-                                      (hash 'query "hello" 'limit 5)
+                                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "hello")
+  (hash-put! ht 'limit 5)
+  ht)
                                       agent-id))
 
 ;; Get call history

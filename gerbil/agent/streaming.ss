@@ -35,18 +35,18 @@
   (type                  ; Event type (:execution-start, :step-start, etc.)
    timestamp             ; Event timestamp
    agent-id              ; Agent ID
-   data                  ; Event data (hash)
+   data                  ; Event data (make-hash-table)
    metadata)             ; Additional metadata
   transparent: #t)
 
 ;;; Event types
-(def event-type-execution-start :execution-start)
-(def event-type-execution-complete :execution-complete)
-(def event-type-execution-error :execution-error)
-(def event-type-step-start :step-start)
-(def event-type-step-complete :step-complete)
-(def event-type-step-error :step-error)
-(def event-type-progress :progress)
+(def event-type-execution-start 'execution-start)
+(def event-type-execution-complete 'execution-complete)
+(def event-type-execution-error 'execution-error)
+(def event-type-step-start 'step-start)
+(def event-type-step-complete 'step-complete)
+(def event-type-step-error 'step-error)
+(def event-type-progress 'progress)
 
 ;;; ============================================================================
 ;;; Streaming Executor
@@ -58,7 +58,7 @@
    metadata)             ; Additional metadata
   transparent: #t)
 
-(def (make-streaming-executor base-executor #!key (callbacks #f))
+(def (make-streaming-executor base-executor . rest (callbacks #f))
   "Create streaming executor with callbacks
 
    Args:
@@ -71,7 +71,7 @@
   (make-streaming-executor
    base-executor: base-executor
    callbacks: (or callbacks (make-default-callbacks))
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Default Callbacks
@@ -91,7 +91,7 @@
    on-step-complete: (lambda (event) (void))
    on-step-error: (lambda (event) (void))
    on-progress: (lambda (event) (void))
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 (def (make-logging-callbacks)
   "Create logging callbacks for debugging
@@ -127,7 +127,7 @@
                                    (hash-ref (execution-event-data event) 'percent)
                                    (hash-ref (execution-event-data event) 'current)
                                    (hash-ref (execution-event-data event) 'total))))
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Event Creation
@@ -149,7 +149,7 @@
    timestamp: (current-seconds)
    agent-id: agent-id
    data: data
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Callback Invocation
@@ -167,19 +167,19 @@
 
   (let ((type (execution-event-type event)))
     (case type
-      ((:execution-start)
+      (('execution-start)
        ((execution-callback-on-execution-start callbacks) event))
-      ((:execution-complete)
+      (('execution-complete)
        ((execution-callback-on-execution-complete callbacks) event))
-      ((:execution-error)
+      (('execution-error)
        ((execution-callback-on-execution-error callbacks) event))
-      ((:step-start)
+      (('step-start)
        ((execution-callback-on-step-start callbacks) event))
-      ((:step-complete)
+      (('step-complete)
        ((execution-callback-on-step-complete callbacks) event))
-      ((:step-error)
+      (('step-error)
        ((execution-callback-on-step-error callbacks) event))
-      ((:progress)
+      (('progress)
        ((execution-callback-on-progress callbacks) event))
       (else
        (void)))))
@@ -210,8 +210,9 @@
     (invoke-callback callbacks
                     (make-event event-type-execution-start
                                agent-id
-                               (hash 'config (agent-config->hash config)
-                                     'state (agent-state->hash state))))
+                               (let ((ht (make-hash-table)))
+  (hash-put! ht 'config (agent-config->hash config))
+  ht)))
 
     ;; Update agent state to running
     (agent-state-status-set! state agent-status-running)
@@ -231,12 +232,14 @@
                         output: "Max steps reached"
                         error: #f
                         duration: (- (current-seconds) start-time)
-                        metadata: (hash))))
+                        metadata: (make-hash-table))))
            ;; Fire execution complete event
            (invoke-callback callbacks
                            (make-event event-type-execution-complete
                                       agent-id
-                                      (hash 'result (execution-result->hash result))))
+                                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'result (execution-result->hash result))
+  ht)))
            result))
 
         ;; Continue execution
@@ -249,8 +252,10 @@
                  (invoke-callback callbacks
                                  (make-event event-type-step-start
                                             agent-id
-                                            (hash 'step_number step-num
-                                                  'step_type (execution-step-type next-step))))
+                                            (let ((ht (make-hash-table)))
+  (hash-put! ht 'step_number step-num)
+  (hash-put! ht 'step_type (execution-step-type next-step))
+  ht)))
 
                  ;; Execute step
                  (let ((executed-step (execute-step base-executor context next-step)))
@@ -269,9 +274,9 @@
                      (invoke-callback callbacks
                                      (make-event event-type-progress
                                                 agent-id
-                                                (hash 'current (+ step-num 1)
-                                                      'total max-steps
-                                                      'percent progress-percent))))
+                                                (let ((ht (make-hash-table)))
+  (hash-put! ht 'current (+ step-num 1))
+  ht))))
 
                    ;; Check if step failed
                    (if (step-failed? executed-step)
@@ -284,8 +289,10 @@
                          (invoke-callback callbacks
                                          (make-event event-type-step-error
                                                     agent-id
-                                                    (hash 'step_number step-num
-                                                          'error (execution-step-error executed-step))))
+                                                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'step_number step-num)
+  (hash-put! ht 'error (execution-step-error executed-step))
+  ht)))
 
                          ;; Fire execution error event
                          (let ((result (make-execution-result
@@ -296,12 +303,13 @@
                                         output: #f
                                         error: (execution-step-error executed-step)
                                         duration: (- (current-seconds) start-time)
-                                        metadata: (hash))))
+                                        metadata: (make-hash-table))))
                            (invoke-callback callbacks
                                            (make-event event-type-execution-error
                                                       agent-id
-                                                      (hash 'result (execution-result->hash result)
-                                                            'error (execution-step-error executed-step))))
+                                                      (let ((ht (make-hash-table)))
+  (hash-put! ht 'result (execution-result->hash result))
+  ht)))
                            result))
 
                        ;; Step succeeded - fire complete event and continue
@@ -310,9 +318,10 @@
                          (invoke-callback callbacks
                                          (make-event event-type-step-complete
                                                     agent-id
-                                                    (hash 'step_number step-num
-                                                          'step_type (execution-step-type executed-step)
-                                                          'duration (execution-step-duration executed-step))))
+                                                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'step_number step-num)
+  (hash-put! ht 'step_type (execution-step-type executed-step))
+  ht)))
                          (loop (+ step-num 1))))))
 
                ;; No more steps - execution complete
@@ -326,12 +335,14 @@
                                 output: "Execution complete"
                                 error: #f
                                 duration: (- (current-seconds) start-time)
-                                metadata: (hash))))
+                                metadata: (make-hash-table))))
                    ;; Fire execution complete event
                    (invoke-callback callbacks
                                    (make-event event-type-execution-complete
                                               agent-id
-                                              (hash 'result (execution-result->hash result))))
+                                              (let ((ht (make-hash-table)))
+  (hash-put! ht 'result (execution-result->hash result))
+  ht)))
                    result)))))))
 
      (catch (e)
@@ -346,20 +357,21 @@
                       output: #f
                       error: (error-message e)
                       duration: (- (current-seconds) start-time)
-                      metadata: (hash))))
+                      metadata: (make-hash-table))))
          ;; Fire execution error event
          (invoke-callback callbacks
                          (make-event event-type-execution-error
                                     agent-id
-                                    (hash 'result (execution-result->hash result)
-                                          'error (error-message e))))
+                                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'result (execution-result->hash result))
+  ht)))
          result)))))
 
 ;;; ============================================================================
 ;;; Callback Builders
 ;;; ============================================================================
 
-(def (make-custom-callbacks #!key
+(def (make-custom-callbacks . rest
                             (on-execution-start #f)
                             (on-execution-complete #f)
                             (on-execution-error #f)
@@ -397,5 +409,5 @@
                        (execution-callback-on-step-error default))
      on-progress: (or on-progress
                      (execution-callback-on-progress default))
-     metadata: (hash))))
+     metadata: (make-hash-table))))
 

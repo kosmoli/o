@@ -22,7 +22,7 @@
 ;;; Helper function to convert association list to hash table
 (def (list->hash lst)
   "Convert association list to hash table"
-  (let ((h (hash)))
+  (let ((h (make-hash-table)))
     (for-each (lambda (pair)
                 (hash-put! h (car pair) (cdr pair)))
               lst)
@@ -36,7 +36,7 @@
   (id                ; Unique state identifier
    context           ; Current execution context
    history           ; Execution history (list of state snapshots)
-   variables         ; State variables (hash table)
+   variables         ; State variables (make-hash-table)
    conversation      ; Conversation history
    pending-actions   ; Queue of pending actions
    metadata          ; Additional metadata
@@ -51,7 +51,7 @@
 (defstruct execution-context
   (id                ; Context identifier
    parent-id         ; Parent context (for nested contexts)
-   type              ; Context type: :main :tool :evolution :recovery
+   type              ; Context type: 'main 'tool 'evolution 'recovery
    input             ; Current input being processed
    output            ; Current output
    variables         ; Context-local variables
@@ -80,7 +80,7 @@
 
 (defstruct conversation-message
   (id                ; Message identifier
-   role              ; Role: :user :assistant :system :tool
+   role              ; Role: 'user 'assistant 'system 'tool
    content           ; Message content
    metadata          ; Additional metadata (tool calls, etc.)
    timestamp)        ; Message timestamp
@@ -97,10 +97,10 @@
      id: (uuid->string (make-uuid))
      context: (make-initial-context)
      history: '()
-     variables: (hash)
+     variables: (make-hash-table)
      conversation: '()
      pending-actions: '()
-     metadata: (hash)
+     metadata: (make-hash-table)
      created-at: now
      updated-at: now)))
 
@@ -109,12 +109,12 @@
   (make-execution-context
    id: (uuid->string (make-uuid))
    parent-id: #f
-   type: ':main
+   type: ''main
    input: #f
    output: #f
-   variables: (hash)
+   variables: (make-hash-table)
    stack: '()
-   metadata: (hash)
+   metadata: (make-hash-table)
    created-at: (time->seconds (current-time))))
 
 ;;; ============================================================================
@@ -128,9 +128,11 @@
 
   ;; Log to WAL
   (elixir-wal-log! 'state-set
-                   (hash ('state_id (agent-state-id state))
-                         ('key (symbol->string key))
-                         ('value value))))
+                   (let ((ht (make-hash-table)))
+  (hash-put! ht 'state_id (agent-state-id state))
+  (hash-put! ht 'key (symbol->string key))
+  (hash-put! ht 'value value)
+  ht)))
 
 (def (state-get state key (default #f))
   "Get a state variable"
@@ -147,17 +149,21 @@
 
   ;; Log to WAL
   (elixir-wal-log! 'state-delete
-                   (hash ('state_id (agent-state-id state))
-                         ('key (symbol->string key)))))
+                   (let ((ht (make-hash-table)))
+  (hash-put! ht 'state_id (agent-state-id state))
+  (hash-put! ht 'key (symbol->string key))
+  ht)))
 
 (def (state-clear! state)
   "Clear all state variables"
-  (set! (agent-state-variables state) (hash))
+  (set! (agent-state-variables state) (make-hash-table))
   (set! (agent-state-updated-at state) (time->seconds (current-time)))
 
   ;; Log to WAL
   (elixir-wal-log! 'state-clear
-                   (hash ('state_id (agent-state-id state)))))
+                   (let ((ht (make-hash-table)))
+  (hash-put! ht 'state_id (agent-state-id state))
+  ht)))
 
 ;;; ============================================================================
 ;;; Context Management
@@ -202,9 +208,9 @@
    type: type
    input: #f
    output: #f
-   variables: (hash)
+   variables: (make-hash-table)
    stack: '()
-   metadata: (hash)
+   metadata: (make-hash-table)
    created-at: (time->seconds (current-time))))
 
 (def (switch-context! state new-context)
@@ -239,7 +245,7 @@
                  context-snapshot: (snapshot-context (agent-state-context state))
                  action: action
                  result: result
-                 metadata: (hash)))
+                 metadata: (make-hash-table)))
          (history (agent-state-history state)))
 
     ;; Add to history (keep last 1000 entries)
@@ -250,9 +256,11 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'history-entry
-                     (hash ('state_id (agent-state-id state))
-                           ('entry_id (history-entry-id entry))
-                           ('action action)))))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'state_id (agent-state-id state))
+  (hash-put! ht 'entry_id (history-entry-id entry))
+  (hash-put! ht 'action action)
+  ht))))
 
 (def (get-history state (limit 100))
   "Get execution history (most recent first)"
@@ -273,7 +281,7 @@
 ;;; Conversation Management
 ;;; ============================================================================
 
-(def (add-message! state role content (metadata (hash)))
+(def (add-message! state role content (metadata (make-hash-table)))
   "Add a message to conversation history"
   (let ((message (make-conversation-message
                   id: (uuid->string (make-uuid))
@@ -403,7 +411,7 @@
    output: #f
    variables: (list->hash (hash-ref snapshot 'variables))
    stack: (hash-ref snapshot 'stack)
-   metadata: (hash)
+   metadata: (make-hash-table)
    created-at: (time->seconds (current-time))))
 
 ;;; ============================================================================
@@ -484,7 +492,7 @@
 
 (def (hash-copy h)
   "Create a shallow copy of hash"
-  (let ((new-hash (hash)))
+  (let ((new-hash (make-hash-table)))
     (hash-for-each
      (lambda (k v)
        (hash-put! new-hash k v))
@@ -504,13 +512,18 @@
 (state-set! my-state 'name "TestAgent")
 
 ;; Add conversation
-(add-message! my-state :user "Hello, agent!")
-(add-message! my-state :assistant "Hello! How can I help you?")
+(add-message! my-state 'user "Hello, agent!")
+(add-message! my-state 'assistant "Hello! How can I help you?")
 
 ;; Add history entry
 (add-history-entry! my-state
-                    (hash ('type 'process-input) ('input "test"))
-                    (hash ('status 'success)))
+                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'type 'process-input)
+  (hash-put! ht 'input "test")
+  ht)
+                    (let ((ht (make-hash-table)))
+  (hash-put! ht 'status 'success)
+  ht))
 
 ;; Create snapshot
 (def snapshot (snapshot-state my-state))

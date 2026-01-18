@@ -23,16 +23,16 @@
    max-tokens            ; Maximum tokens allowed
    system-tokens         ; Reserved tokens for system message
    response-tokens       ; Reserved tokens for response
-   strategy              ; Optimization strategy (:truncate, :summarize, :sliding)
+   strategy              ; Optimization strategy (:truncate, :summarize, 'sliding)
    metadata)             ; Additional metadata
   transparent: #t)
 
-(def (make-context-window-manager #!key
+(def (make-context-window-manager . rest
                                    (token-counter estimate-tokens)
                                    (max-tokens 100000)
                                    (system-tokens 2000)
                                    (response-tokens 4096)
-                                   (strategy :truncate))
+                                   (strategy 'truncate))
   "Create context window manager
 
    Args:
@@ -40,7 +40,7 @@
      max-tokens: Maximum tokens allowed in context window
      system-tokens: Reserved tokens for system message
      response-tokens: Reserved tokens for response
-     strategy: Optimization strategy (:truncate, :summarize, :sliding)
+     strategy: Optimization strategy (:truncate, :summarize, 'sliding)
 
    Returns:
      Context window manager"
@@ -51,7 +51,7 @@
    system-tokens: system-tokens
    response-tokens: response-tokens
    strategy: strategy
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Token Counting
@@ -149,11 +149,11 @@
 
   (let ((strategy (context-window-manager-strategy manager)))
     (case strategy
-      ((:truncate)
+      (('truncate)
        (optimize-context-truncate manager context))
-      ((:summarize)
+      (('summarize)
        (optimize-context-summarize manager context))
-      ((:sliding)
+      (('sliding)
        (optimize-context-sliding manager context))
       (else
        (error "Unknown optimization strategy" strategy)))))
@@ -308,15 +308,16 @@
          (usage-percent (inexact->exact (floor (* 100 (/ total-tokens max-tokens)))))
          (available-tokens (- max-tokens total-tokens)))
 
-    (hash 'max_tokens max-tokens
-          'system_tokens system-tokens
-          'message_tokens message-tokens
-          'response_tokens response-tokens
-          'total_tokens total-tokens
-          'available_tokens available-tokens
-          'usage_percent usage-percent
-          'message_count (length history)
-          'needs_optimization (> total-tokens max-tokens))))
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'max_tokens max-tokens)
+  (hash-put! ht 'system_tokens system-tokens)
+  (hash-put! ht 'message_tokens message-tokens)
+  (hash-put! ht 'response_tokens response-tokens)
+  (hash-put! ht 'total_tokens total-tokens)
+  (hash-put! ht 'available_tokens available-tokens)
+  (hash-put! ht 'usage_percent usage-percent)
+  (hash-put! ht 'message_count (length history))
+  ht)))
 
 (def (check-context-fits manager context)
   "Check if context fits within token limits

@@ -26,13 +26,12 @@
   (make-error-response
    "Validation failed"
    status: 400
-   details: (hash
-             'validation_errors
-             (map (lambda (err)
-                    (hash
-                     'field (validation-error-field err)
+   details: (let ((ht (make-hash-table)))
+  (hash-put! ht 'validation_errors (map (lambda (err))
+                    (hash ('field (validation-error-field err))
                      'message (validation-error-message err)))
-                  errors))))
+                  errors)
+  ht)))
 
 ;;; ============================================================================
 ;;; Field Validators
@@ -168,13 +167,12 @@
 (defstruct field-schema
   (name          ; field name
    required?     ; is field required?
-   type          ; expected type (:string :number :boolean :hash :list)
+   type          ; expected type ('string 'number 'boolean 'hash 'list)
    validators)   ; list of validator functions
   transparent: #t)
 
 (def (make-field-schema-instance
-      name
-      #!key
+      name . rest
       (required? #f)
       (type #f)
       (validators '()))
@@ -199,11 +197,11 @@
     (when (and value (field-schema-type schema))
       (let ((type-validator
              (case (field-schema-type schema)
-               ((:string) validate-string)
-               ((:number) validate-number)
-               ((:boolean) validate-boolean)
-               ((:hash) validate-hash)
-               ((:list) validate-list)
+               (('string) validate-string)
+               (('number) validate-number)
+               (('boolean) validate-boolean)
+               (('hash) validate-hash)
+               (('list) validate-list)
                (else #f))))
         (when type-validator
           (let ((err (type-validator (field-schema-name schema) value)))
@@ -246,7 +244,7 @@
                  (make-field-schema-instance
                   'name
                   required?: #t
-                  type: :string
+                  type: 'string
                   validators: (list
                                (lambda (field value)
                                  (validate-min-length field value 1))
@@ -256,12 +254,12 @@
                  (make-field-schema-instance
                   'llm_config
                   required?: #f
-                  type: :hash)
+                  type: 'hash)
 
                  (make-field-schema-instance
                   'system_prompt
                   required?: #f
-                  type: :string
+                  type: 'string
                   validators: (list
                                (lambda (field value)
                                  (validate-max-length field value 10000))))
@@ -269,7 +267,7 @@
                  (make-field-schema-instance
                   'memory_config
                   required?: #f
-                  type: :hash))))
+                  type: 'hash))))
 
     (validate-schema data schema)))
 
@@ -279,7 +277,7 @@
                  (make-field-schema-instance
                   'message
                   required?: #t
-                  type: :string
+                  type: 'string
                   validators: (list
                                (lambda (field value)
                                  (validate-min-length field value 1))
@@ -289,7 +287,7 @@
                  (make-field-schema-instance
                   'stream
                   required?: #f
-                  type: :boolean))))
+                  type: 'boolean))))
 
     (validate-schema data schema)))
 
@@ -299,7 +297,7 @@
                  (make-field-schema-instance
                   'query
                   required?: #t
-                  type: :string
+                  type: 'string
                   validators: (list
                                (lambda (field value)
                                  (validate-min-length field value 1))))
@@ -307,7 +305,7 @@
                  (make-field-schema-instance
                   'limit
                   required?: #f
-                  type: :number
+                  type: 'number
                   validators: (list
                                (lambda (field value)
                                  (validate-min-value field value 1))
@@ -317,7 +315,7 @@
                  (make-field-schema-instance
                   'search_type
                   required?: #f
-                  type: :string
+                  type: 'string
                   validators: (list
                                (lambda (field value)
                                  (validate-enum field value '("text" "semantic"))))))))
@@ -346,10 +344,10 @@
 
 #|
 ;; Validate create agent request
-(def data (hash
-           'name "MyAgent"
-           'llm_config (hash 'provider "openai")
-           'system_prompt "You are helpful."))
+(def data (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "MyAgent")
+  (hash-put! ht 'llm_config (hash 'provider "openai"))
+  ht))
 
 (def errors (validate-create-agent-request data))
 
@@ -359,7 +357,9 @@
 
 ;; Use validation middleware
 (def (my-handler req)
-  (make-json-response (hash 'ok #t)))
+  (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'ok #t)
+  ht)))
 
 (def validated-handler
   ((with-validation validate-create-agent-request) my-handler))

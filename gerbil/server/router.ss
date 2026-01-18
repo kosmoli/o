@@ -33,8 +33,7 @@
 ;;; Router Creation
 ;;; ============================================================================
 
-(def (make-router-instance
-      #!key
+(def (make-router-instance . rest
       (not-found default-not-found-handler)
       (method-not-allowed default-method-not-allowed-handler))
   "Create a new router"
@@ -140,7 +139,7 @@
               (param-names (route-params route)))
           (list->hash
            (map cons param-names param-values)))
-        (hash))))
+        (make-hash-table))))
 
 ;;; ============================================================================
 ;;; Route Matching
@@ -224,10 +223,9 @@
 (def (list-routes router)
   "List all registered routes"
   (map (lambda (route)
-         (hash
-          'method (route-method route)
-          'pattern (route-pattern route)
-          'params (route-params route)))
+         (let ((ht (make-hash-table)))
+  (hash-put! ht 'method (route-method route))
+  ht))
        (router-routes router)))
 
 (def (print-routes router)
@@ -254,19 +252,27 @@
 
 ;; Register routes
 (get! router "/" (lambda (req)
-                   (make-json-response (hash 'message "Welcome!"))))
+                   (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Welcome!")
+  ht))))
 
 (get! router "/users" (lambda (req)
-                        (make-json-response (hash 'users '()))))
+                        (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'users '())
+  ht))))
 
 (get! router "/users/:id" (lambda (req)
                             (let ((id (get-path-param req 'id)))
-                              (make-json-response (hash 'user_id id)))))
+                              (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'user_id id)
+  ht)))))
 
 (post! router "/users" (lambda (req)
                          (if (http-request-json req)
                              (make-json-response
-                              (hash 'created (http-request-json req))
+                              (let ((ht (make-hash-table)))
+  (hash-put! ht 'created (http-request-json req))
+  ht)
                               status: 201)
                              (make-error-response "Expected JSON" status: 400))))
 
@@ -274,9 +280,13 @@
 (group-routes! router "/api/v1"
   (lambda (r)
     (get! r "/status" (lambda (req)
-                        (make-json-response (hash 'status "ok"))))
+                        (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'status "ok")
+  ht))))
     (get! r "/version" (lambda (req)
-                         (make-json-response (hash 'version "1.0.0"))))))
+                         (make-json-response (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "1.0.0")
+  ht))))))
 
 ;; Print routes
 (print-routes router)

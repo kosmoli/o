@@ -10,7 +10,11 @@
   :std/format
   :std/net/httpd
   :std/text/json
-  :o/database/client
+;;
+  ;; ;; (
+  ;; :o/database/client (placeholder)) (placeholder)
+ (placeholder)
+
   :o/database/messages
   :o/message/types
   :o/message/manager)
@@ -31,10 +35,9 @@
    on-error)       ; Error callback
   transparent: #t)
 
-(def *active-streams* (hash))
+(def *active-streams* (make-hash-table))
 
-(def (make-stream agent-id manager
-                   #!key
+(def (make-stream agent-id manager . rest
                    (buffer-size 10)
                    (on-chunk #f)
                    (on-complete #f)
@@ -74,7 +77,7 @@
 ;;; Server-Sent Events (SSE)
 ;;; ============================================================================
 
-(def (sse-format-event data #!key (event #f) (id #f) (retry #f))
+(def (sse-format-event data . rest (event #f) (id #f) (retry #f))
   "Format data as SSE event"
   (let ((lines '()))
 
@@ -105,9 +108,11 @@
   "Send chunk via SSE"
   (when (stream-active? stream)
     (let ((event (sse-format-event
-                  (hash 'type "chunk"
-                        'content chunk
-                        'stream_id (message-stream-id stream))
+                  (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "chunk")
+  (hash-put! ht 'content chunk)
+  (hash-put! ht 'stream_id (message-stream-id stream))
+  ht)
                   event: "message"
                   id: (uuid-generate))))
 
@@ -120,8 +125,10 @@
 (def (sse-send-complete stream)
   "Send completion event via SSE"
   (let ((event (sse-format-event
-                (hash 'type "complete"
-                      'stream_id (message-stream-id stream))
+                (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "complete")
+  (hash-put! ht 'stream_id (message-stream-id stream))
+  ht)
                 event: "complete")))
 
     ;; Call completion callback if provided
@@ -136,9 +143,11 @@
 (def (sse-send-error stream error-msg)
   "Send error event via SSE"
   (let ((event (sse-format-event
-                (hash 'type "error"
-                      'error error-msg
-                      'stream_id (message-stream-id stream))
+                (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "error")
+  (hash-put! ht 'error e)
+  (hash-put! ht 'stream_id (message-stream-id stream))
+  ht)
                 event: "error")))
 
     ;; Call error callback if provided
@@ -212,8 +221,7 @@
 ;;; Message Streaming
 ;;; ============================================================================
 
-(def (stream-create-message! stream role content
-                             #!key
+(def (stream-create-message! stream role content . rest
                              (tool-calls #f)
                              (tool-call-id #f)
                              (tool-name #f)
@@ -230,8 +238,10 @@
                                        completion-tokens: completion-tokens)))
 
      ;; Send message via stream
-     (sse-send-chunk stream (hash 'type "message"
-                                   'message msg))
+     (sse-send-chunk stream (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "message")
+  (hash-put! ht 'message msg)
+  ht))
 
      msg)
    (catch (e)
@@ -257,8 +267,10 @@
 
     ;; Send final message if provided
     (when final-message
-      (sse-send-chunk stream (hash 'type "final"
-                                    'message final-message)))
+      (sse-send-chunk stream (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "final")
+  (hash-put! ht 'message final-message)
+  ht)))
 
     ;; Send completion event
     (sse-send-complete stream)))
@@ -267,8 +279,7 @@
 ;;; LLM Streaming Integration
 ;;; ============================================================================
 
-(def (stream-llm-response stream llm-chunks
-                          #!key
+(def (stream-llm-response stream llm-chunks . rest
                           (prompt-tokens 0)
                           (completion-tokens 0))
   "Stream LLM response chunks"
@@ -296,8 +307,7 @@
 
     accumulated))
 
-(def (stream-llm-with-tools stream llm-chunks tool-calls
-                            #!key
+(def (stream-llm-with-tools stream llm-chunks tool-calls . rest
                             (prompt-tokens 0)
                             (completion-tokens 0))
   "Stream LLM response with tool calls"
@@ -316,8 +326,10 @@
 
     ;; Send tool calls
     (when (and (stream-active? stream) tool-calls)
-      (sse-send-chunk stream (hash 'type "tool_calls"
-                                    'tool_calls tool-calls)))
+      (sse-send-chunk stream (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "tool_calls")
+  (hash-put! ht 'tool_calls tool-calls)
+  ht)))
 
     ;; Create assistant message with tool calls
     (when (stream-active? stream)
@@ -369,9 +381,11 @@
      (catch (e)
        (make-http-response
         status: 500
-        headers: (hash "Content-Type" "application/json")
+        headers: (make-hash-table)
         body: (json-object->string
-               (hash 'error (error-message e))))))))
+               (let ((ht (make-hash-table)))
+  (hash-put! ht 'error (error-message e))
+  ht)))))))
 
 ;;; ============================================================================
 ;;; Stream Utilities
@@ -379,12 +393,9 @@
 
 (def (stream-get-stats stream)
   "Get stream statistics"
-  (hash
-   'stream_id (message-stream-id stream)
-   'agent_id (message-stream-agent-id stream)
-   'active (message-stream-active? stream)
-   'buffer_size (length (message-stream-buffer stream))
-   'max_buffer_size (message-stream-buffer-size stream)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'stream_id (message-stream-id stream))
+  ht))
 
 (def (get-active-streams)
   "Get all active streams"
@@ -463,7 +474,9 @@
 
 ;; SSE Example
 (def sse-event (sse-format-event
-                (hash 'message "Hello")
+                (let ((ht (make-hash-table)))
+  (hash-put! ht 'message "Hello")
+  ht)
                 event: "message"
                 id: "123"))
 (displayln sse-event)

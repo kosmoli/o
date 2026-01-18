@@ -236,18 +236,9 @@
 
 (def (message->hash msg)
   "Convert message struct to hash"
-  (hash
-   'id (message-id msg)
-   'agent_id (message-agent-id msg)
-   'role (message-role msg)
-   'content (message-content msg)
-   'tool_calls (message-tool-calls msg)
-   'tool_call_id (message-tool-call-id msg)
-   'tool_name (message-tool-name msg)
-   'prompt_tokens (message-prompt-tokens msg)
-   'completion_tokens (message-completion-tokens msg)
-   'total_tokens (message-total-tokens msg)
-   'created_at (message-created-at msg)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (message-id msg))
+  ht))
 
 ;;; ============================================================================
 ;;; Utility Functions
@@ -295,7 +286,10 @@
              offset: 0))
 
 ;; Validate message parameters
-(def params (hash 'role "user" 'content "Hello!"))
+(def params (let ((ht (make-hash-table)))
+  (hash-put! ht 'role "user")
+  (hash-put! ht 'content "Hello!")
+  ht))
 (def result (validate-message-params params))
 (if (car result)
     (displayln "Valid message")
@@ -303,8 +297,18 @@
 
 ;; Calculate statistics
 (def messages (list
-               (hash 'role "user" 'content "Hello" 'total_tokens 5 'created_at 1705315200)
-               (hash 'role "assistant" 'content "Hi!" 'total_tokens 3 'created_at 1705315210)))
+               (let ((ht (make-hash-table)))
+  (hash-put! ht 'role "user")
+  (hash-put! ht 'content "Hello")
+  (hash-put! ht 'total_tokens 5)
+  (hash-put! ht 'created_at 1705315200)
+  ht)
+               (let ((ht (make-hash-table)))
+  (hash-put! ht 'role "assistant")
+  (hash-put! ht 'content "Hi!")
+  (hash-put! ht 'total_tokens 3)
+  (hash-put! ht 'created_at 1705315210)
+  ht)))
 (def stats (calculate-stats messages))
 (displayln (format "Total messages: ~a" (message-stats-total-messages stats)))
 |#

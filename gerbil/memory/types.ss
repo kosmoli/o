@@ -2,6 +2,8 @@
 ;;;
 ;;; Type definitions for memory system (memos-compatible).
 
+(package: o)
+
 (export #t)
 
 (import
@@ -105,7 +107,7 @@
 (defstruct core-memory
   (persona      ; Persona block
    human        ; Human block
-   custom)      ; Custom blocks (hash)
+   custom)      ; Custom blocks (make-hash-table)
   transparent: #t)
 
 (def (make-default-core-memory)
@@ -113,7 +115,7 @@
   (make-core-memory
    persona: default-persona-template
    human: default-human-template
-   custom: (hash)))
+   custom: (make-hash-table)))
 
 (def (core-memory-get-block memory label)
   "Get block from core memory by label"
@@ -232,15 +234,9 @@
 
 (def (memory-block->hash block)
   "Convert memory block struct to hash"
-  (hash
-   'id (memory-block-id block)
-   'agent_id (memory-block-agent-id block)
-   'label (memory-block-label block)
-   'value (memory-block-value block)
-   'is_template (memory-block-is-template block)
-   'is_readonly (memory-block-is-readonly block)
-   'created_at (memory-block-created-at block)
-   'updated_at (memory-block-updated-at block)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (memory-block-id block))
+  ht))
 
 (def (hash->archival-entry h)
   "Convert hash to archival entry struct"
@@ -255,14 +251,9 @@
 
 (def (archival-entry->hash entry)
   "Convert archival entry struct to hash"
-  (hash
-   'id (archival-entry-id entry)
-   'agent_id (archival-entry-agent-id entry)
-   'content (archival-entry-content entry)
-   'embedding (archival-entry-embedding entry)
-   'importance (archival-entry-importance entry)
-   'tags (archival-entry-tags entry)
-   'created_at (archival-entry-created-at entry)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'id (archival-entry-id entry))
+  ht))
 
 ;;; ============================================================================
 ;;; Memory Utilities
@@ -305,7 +296,10 @@
             updated-at: 1705401600))
 
 ;; Validate block parameters
-(def params (hash 'label "persona" 'value "You are helpful."))
+(def params (let ((ht (make-hash-table)))
+  (hash-put! ht 'label "persona")
+  (hash-put! ht 'value "You are helpful.")
+  ht))
 (def result (validate-block-params params))
 (if (car result)
     (displayln "Valid block")

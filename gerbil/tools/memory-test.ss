@@ -40,15 +40,17 @@
     (test-case "Core memory append tool definition"
       (check (tool-definition? core-memory-append-tool))
       (check (equal? (tool-definition-name core-memory-append-tool) "core_memory_append"))
-      (check (eq? (tool-definition-category core-memory-append-tool) :memory))
+      (check (eq? (tool-definition-category core-memory-append-tool) 'memory))
       (check (not (tool-definition-requires-approval core-memory-append-tool))))
 
     (test-case "Append to persona memory"
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "core_memory_append"
-                                     (hash 'name "persona"
-                                           'content "I am helpful and friendly.")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "I am helpful and friendly.")
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (hash-key? (tool-call-result call) 'block_name))
@@ -58,20 +60,29 @@
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "core_memory_append"
-                                     (hash 'name "human"
-                                           'content "User prefers Python.")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "human")
+  (hash-put! ht 'content "User prefers Python.")
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (hash-key? (tool-call-result call) 'new_value)))
 
     (test-case "Append validates arguments"
-      (def valid-args (hash 'name "persona" 'content "Test"))
+      (def valid-args (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "Test")
+  ht))
       (check (car (validate-tool-arguments core-memory-append-tool valid-args)))
 
-      (def missing-name (hash 'content "Test"))
+      (def missing-name (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test")
+  ht))
       (check (not (car (validate-tool-arguments core-memory-append-tool missing-name))))
 
-      (def missing-content (hash 'name "persona"))
+      (def missing-content (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  ht))
       (check (not (car (validate-tool-arguments core-memory-append-tool missing-content)))))))
 
 ;;; ============================================================================
@@ -84,7 +95,7 @@
     (test-case "Core memory replace tool definition"
       (check (tool-definition? core-memory-replace-tool))
       (check (equal? (tool-definition-name core-memory-replace-tool) "core_memory_replace"))
-      (check (eq? (tool-definition-category core-memory-replace-tool) :memory))
+      (check (eq? (tool-definition-category core-memory-replace-tool) 'memory))
       (check (not (tool-definition-requires-approval core-memory-replace-tool))))
 
     (test-case "Replace in persona memory"
@@ -93,27 +104,36 @@
       ;; First append some content
       (dispatcher-call-tool dispatcher
                            "core_memory_append"
-                           (hash 'name "persona"
-                                 'content "I am helpful.")
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "I am helpful.")
+  ht)
                            test-agent-id)
 
       ;; Then replace
       (def call (dispatcher-call-tool dispatcher
                                      "core_memory_replace"
-                                     (hash 'name "persona"
-                                           'old_content "helpful"
-                                           'new_content "very helpful")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'old_content "helpful")
+  (hash-put! ht 'new_content "very helpful")
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (hash-key? (tool-call-result call) 'block_name)))
 
     (test-case "Replace validates arguments"
-      (def valid-args (hash 'name "persona"
-                           'old_content "old"
-                           'new_content "new"))
+      (def valid-args (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'old_content "old")
+  (hash-put! ht 'new_content "new")
+  ht))
       (check (car (validate-tool-arguments core-memory-replace-tool valid-args)))
 
-      (def missing-old (hash 'name "persona" 'new_content "new"))
+      (def missing-old (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'new_content "new")
+  ht))
       (check (not (car (validate-tool-arguments core-memory-replace-tool missing-old)))))))
 
 ;;; ============================================================================
@@ -126,16 +146,18 @@
     (test-case "Archival memory insert tool definition"
       (check (tool-definition? archival-memory-insert-tool))
       (check (equal? (tool-definition-name archival-memory-insert-tool) "archival_memory_insert"))
-      (check (eq? (tool-definition-category archival-memory-insert-tool) :memory))
+      (check (eq? (tool-definition-category archival-memory-insert-tool) 'memory))
       (check (not (tool-definition-requires-approval archival-memory-insert-tool))))
 
     (test-case "Insert into archival memory"
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "archival_memory_insert"
-                                     (hash 'content "User prefers Python over JavaScript"
-                                           'importance 8
-                                           'tags '("preferences" "programming"))
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "User prefers Python over JavaScript")
+  (hash-put! ht 'importance 8)
+  (hash-put! ht 'tags '("preferences"))
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (hash-key? (tool-call-result call) 'id))
@@ -146,16 +168,22 @@
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "archival_memory_insert"
-                                     (hash 'content "Test content")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test content")
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (equal? (hash-ref (tool-call-result call) 'importance) 5)))
 
     (test-case "Insert validates arguments"
-      (def valid-args (hash 'content "Test content"))
+      (def valid-args (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test content")
+  ht))
       (check (car (validate-tool-arguments archival-memory-insert-tool valid-args)))
 
-      (def missing-content (hash 'importance 5))
+      (def missing-content (let ((ht (make-hash-table)))
+  (hash-put! ht 'importance 5)
+  ht))
       (check (not (car (validate-tool-arguments archival-memory-insert-tool missing-content)))))))
 
 ;;; ============================================================================
@@ -168,7 +196,7 @@
     (test-case "Archival memory search tool definition"
       (check (tool-definition? archival-memory-search-tool))
       (check (equal? (tool-definition-name archival-memory-search-tool) "archival_memory_search"))
-      (check (eq? (tool-definition-category archival-memory-search-tool) :memory))
+      (check (eq? (tool-definition-category archival-memory-search-tool) 'memory))
       (check (not (tool-definition-requires-approval archival-memory-search-tool))))
 
     (test-case "Search archival memory"
@@ -177,21 +205,27 @@
       ;; Insert some entries
       (dispatcher-call-tool dispatcher
                            "archival_memory_insert"
-                           (hash 'content "Python is a great language"
-                                 'tags '("programming"))
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Python is a great language")
+  (hash-put! ht 'tags '("programming"))
+  ht)
                            test-agent-id)
 
       (dispatcher-call-tool dispatcher
                            "archival_memory_insert"
-                           (hash 'content "JavaScript is also useful"
-                                 'tags '("programming"))
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "JavaScript is also useful")
+  (hash-put! ht 'tags '("programming"))
+  ht)
                            test-agent-id)
 
       ;; Search
       (def call (dispatcher-call-tool dispatcher
                                      "archival_memory_search"
-                                     (hash 'query "Python"
-                                           'limit 5)
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "Python")
+  (hash-put! ht 'limit 5)
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (hash-key? (tool-call-result call) 'results))
@@ -201,18 +235,24 @@
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "archival_memory_search"
-                                     (hash 'query "test"
-                                           'limit 10
-                                           'page 0)
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "test")
+  (hash-put! ht 'limit 10)
+  (hash-put! ht 'page 0)
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (equal? (hash-ref (tool-call-result call) 'page) 0)))
 
     (test-case "Search validates arguments"
-      (def valid-args (hash 'query "test"))
+      (def valid-args (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "test")
+  ht))
       (check (car (validate-tool-arguments archival-memory-search-tool valid-args)))
 
-      (def missing-query (hash 'limit 10))
+      (def missing-query (let ((ht (make-hash-table)))
+  (hash-put! ht 'limit 10)
+  ht))
       (check (not (car (validate-tool-arguments archival-memory-search-tool missing-query)))))))
 
 ;;; ============================================================================
@@ -225,7 +265,7 @@
     (test-case "Archival memory semantic search tool definition"
       (check (tool-definition? archival-memory-semantic-search-tool))
       (check (equal? (tool-definition-name archival-memory-semantic-search-tool) "archival_memory_semantic_search"))
-      (check (eq? (tool-definition-category archival-memory-semantic-search-tool) :memory))
+      (check (eq? (tool-definition-category archival-memory-semantic-search-tool) 'memory))
       (check (not (tool-definition-requires-approval archival-memory-semantic-search-tool))))
 
     (test-case "Semantic search archival memory"
@@ -234,16 +274,20 @@
       ;; Insert entries with embeddings
       (dispatcher-call-tool dispatcher
                            "archival_memory_insert"
-                           (hash 'content "Python programming language"
-                                 'importance 8)
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Python programming language")
+  (hash-put! ht 'importance 8)
+  ht)
                            test-agent-id)
 
       ;; Semantic search
       (def call (dispatcher-call-tool dispatcher
                                      "archival_memory_semantic_search"
-                                     (hash 'query "coding in Python"
-                                           'limit 5
-                                           'min_similarity 0.7)
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "coding in Python")
+  (hash-put! ht 'limit 5)
+  (hash-put! ht 'min_similarity 0.7)
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (hash-key? (tool-call-result call) 'results))
@@ -253,16 +297,22 @@
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "archival_memory_semantic_search"
-                                     (hash 'query "test query")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "test query")
+  ht)
                                      test-agent-id))
       (check (tool-call-completed? call))
       (check (equal? (hash-ref (tool-call-result call) 'min_similarity) 0.7)))
 
     (test-case "Semantic search validates arguments"
-      (def valid-args (hash 'query "test"))
+      (def valid-args (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "test")
+  ht))
       (check (car (validate-tool-arguments archival-memory-semantic-search-tool valid-args)))
 
-      (def missing-query (hash 'limit 10))
+      (def missing-query (let ((ht (make-hash-table)))
+  (hash-put! ht 'limit 10)
+  ht))
       (check (not (car (validate-tool-arguments archival-memory-semantic-search-tool missing-query)))))))
 
 ;;; ============================================================================
@@ -284,7 +334,7 @@
     (test-case "List memory tools by category"
       (def dispatcher (setup-test-dispatcher))
       (def memory-tools (registry-list-tools (tool-dispatcher-registry dispatcher)
-                                            category: :memory))
+                                            category: 'memory))
       (check (>= (length memory-tools) 5)))
 
     (test-case "Core memory workflow"
@@ -293,17 +343,21 @@
       ;; Append to persona
       (def append-call (dispatcher-call-tool dispatcher
                                             "core_memory_append"
-                                            (hash 'name "persona"
-                                                  'content "I am helpful.")
+                                            (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "I am helpful.")
+  ht)
                                             test-agent-id))
       (check (tool-call-completed? append-call))
 
       ;; Replace in persona
       (def replace-call (dispatcher-call-tool dispatcher
                                              "core_memory_replace"
-                                             (hash 'name "persona"
-                                                   'old_content "helpful"
-                                                   'new_content "very helpful")
+                                             (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'old_content "helpful")
+  (hash-put! ht 'new_content "very helpful")
+  ht)
                                              test-agent-id))
       (check (tool-call-completed? replace-call)))
 
@@ -313,16 +367,20 @@
       ;; Insert entry
       (def insert-call (dispatcher-call-tool dispatcher
                                             "archival_memory_insert"
-                                            (hash 'content "User likes Python"
-                                                  'importance 8
-                                                  'tags '("preferences"))
+                                            (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "User likes Python")
+  (hash-put! ht 'importance 8)
+  (hash-put! ht 'tags '("preferences"))
+  ht)
                                             test-agent-id))
       (check (tool-call-completed? insert-call))
 
       ;; Search for entry
       (def search-call (dispatcher-call-tool dispatcher
                                             "archival_memory_search"
-                                            (hash 'query "Python")
+                                            (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "Python")
+  ht)
                                             test-agent-id))
       (check (tool-call-completed? search-call))
       (check (> (hash-ref (tool-call-result search-call) 'count) 0)))
@@ -332,10 +390,15 @@
 
       ;; Make several tool calls
       (dispatcher-call-tool dispatcher "core_memory_append"
-                           (hash 'name "persona" 'content "Test 1")
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "Test 1")
+  ht)
                            test-agent-id)
       (dispatcher-call-tool dispatcher "archival_memory_insert"
-                           (hash 'content "Test 2")
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'content "Test 2")
+  ht)
                            test-agent-id)
 
       ;; Check history
@@ -353,8 +416,10 @@
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "core_memory_append"
-                                     (hash 'name "nonexistent_block"
-                                           'content "Test")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "nonexistent_block")
+  (hash-put! ht 'content "Test")
+  ht)
                                      test-agent-id))
       ;; Should handle gracefully
       (check (tool-call? call)))
@@ -365,16 +430,20 @@
       ;; Append first
       (dispatcher-call-tool dispatcher
                            "core_memory_append"
-                           (hash 'name "persona"
-                                 'content "I am helpful.")
+                           (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'content "I am helpful.")
+  ht)
                            test-agent-id)
 
       ;; Try to replace non-existent content
       (def call (dispatcher-call-tool dispatcher
                                      "core_memory_replace"
-                                     (hash 'name "persona"
-                                           'old_content "nonexistent"
-                                           'new_content "new")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'name "persona")
+  (hash-put! ht 'old_content "nonexistent")
+  (hash-put! ht 'new_content "new")
+  ht)
                                      test-agent-id))
       ;; Should handle gracefully
       (check (tool-call? call)))
@@ -383,7 +452,9 @@
       (def dispatcher (setup-test-dispatcher))
       (def call (dispatcher-call-tool dispatcher
                                      "archival_memory_search"
-                                     (hash 'query "")
+                                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'query "")
+  ht)
                                      test-agent-id))
       ;; Should handle gracefully
       (check (tool-call? call)))))

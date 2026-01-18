@@ -17,10 +17,10 @@
 (def (health-check-handler req)
   "Basic health check endpoint"
   (make-json-response
-   (hash
-    'status "ok"
-    'timestamp (current-seconds)
-    'uptime (get-uptime))))
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'status "ok")
+  (hash-put! ht 'timestamp (current-seconds))
+  ht)))
 
 (def *server-start-time* (current-seconds))
 
@@ -35,26 +35,24 @@
 (def (status-handler req)
   "Detailed status endpoint"
   (make-json-response
-   (hash
-    'status "ok"
-    'timestamp (current-seconds)
-    'uptime (get-uptime)
-    'version "0.1.0"
-    'environment (get-environment)
-    'system (get-system-info))))
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'status "ok")
+  (hash-put! ht 'timestamp (current-seconds))
+  ht)))
 
 (def (get-environment)
   "Get environment information"
-  (hash
-   'gerbil_version (gerbil-version-string)
-   'platform (system-type)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'gerbil_version (gerbil-version-string))
+  ht))
 
 (def (get-system-info)
   "Get system information"
-  (hash
-   'memory_usage "N/A"  ;; TODO: Implement memory tracking
-   'cpu_usage "N/A"     ;; TODO: Implement CPU tracking
-   'active_connections 0)) ;; TODO: Track active connections
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'memory_usage "N/A")
+  (hash-put! ht 'cpu_usage "N/A")
+  (hash-put! ht 'active_connections 0)
+  ht)) ;; TODO: Track active connections
 
 ;;; ============================================================================
 ;;; Readiness Check
@@ -64,10 +62,15 @@
   "Readiness check endpoint (for Kubernetes, etc.)"
   (if (server-ready?)
       (make-json-response
-       (hash 'ready #t)
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'ready #t)
+  ht)
        status: 200)
       (make-json-response
-       (hash 'ready #f 'reason "Server not ready")
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'ready #f)
+  (hash-put! ht 'reason "Server not ready")
+  ht)
        status: 503)))
 
 (def (server-ready?)
@@ -86,10 +89,14 @@
   "Liveness check endpoint (for Kubernetes, etc.)"
   (if (server-alive?)
       (make-json-response
-       (hash 'alive #t)
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'alive #t)
+  ht)
        status: 200)
       (make-json-response
-       (hash 'alive #f)
+       (let ((ht (make-hash-table)))
+  (hash-put! ht 'alive #f)
+  ht)
        status: 503)))
 
 (def (server-alive?)
@@ -113,11 +120,12 @@
 
 (def (collect-metrics)
   "Collect server metrics"
-  (hash
-   'http_requests_total 0      ;; TODO: Track request count
-   'http_request_duration_seconds 0  ;; TODO: Track request duration
-   'http_errors_total 0        ;; TODO: Track error count
-   'server_uptime_seconds (get-uptime)))
+  (let ((ht (make-hash-table)))
+  (hash-put! ht 'http_requests_total 0)
+  (hash-put! ht 'http_request_duration_seconds 0)
+  (hash-put! ht 'http_errors_total 0)
+  (hash-put! ht 'server_uptime_seconds (get-uptime))
+  ht))
 
 (def (format-prometheus-metrics metrics)
   "Format metrics in Prometheus format"
@@ -138,11 +146,12 @@
 (def (version-handler req)
   "Version information endpoint"
   (make-json-response
-   (hash
-    'version "0.1.0"
-    'build_date "2026-01-16"
-    'git_commit "unknown"  ;; TODO: Add git commit hash
-    'gerbil_version (gerbil-version-string))))
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'version "0.1.0")
+  (hash-put! ht 'build_date "2026-01-16")
+  (hash-put! ht 'git_commit "unknown")
+  (hash-put! ht 'gerbil_version (gerbil-version-string))
+  ht)))
 
 ;;; ============================================================================
 ;;; Example Usage (commented out)

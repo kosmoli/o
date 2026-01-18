@@ -28,13 +28,17 @@
   "Create mock LLM client for testing"
   (lambda (method . args)
     (case method
-      ((:chat)
+      (('chat)
        (make-llm-response
         content: "Test response"
         tool-calls: '()
-        usage: (hash 'prompt_tokens 10 'completion_tokens 20 'total_tokens 30)
+        usage: (let ((ht (make-hash-table)))
+  (hash-put! ht 'prompt_tokens 10)
+  (hash-put! ht 'completion_tokens 20)
+  (hash-put! ht 'total_tokens 30)
+  ht)
         finish-reason: "stop"
-        metadata: (hash)))
+        metadata: (make-hash-table)))
       (else
        (error "Unknown method" method)))))
 
@@ -45,36 +49,40 @@
                               (make-tool-definition
                                name: "test_tool"
                                description: "Test tool"
-                               parameters: (hash 'input (hash 'type :string 'required #t))
+                               parameters: (let ((ht (make-hash-table)))
+  (hash-put! ht 'input (hash 'type 'string 'required #t))
+  ht)
                                handler: (lambda (args ctx)
                                          (make-success-result
-                                          (hash 'output (hash-ref args 'input))))
-                               category: :custom
+                                          (let ((ht (make-hash-table)))
+  (hash-put! ht 'output (hash-ref args 'input))
+  ht)))
+                               category: 'custom
                                requires-approval: #f
-                               metadata: (hash)))
+                               metadata: (make-hash-table)))
     dispatcher))
 
 (def (make-mock-message-manager)
   "Create mock message manager for testing"
   (lambda (method . args)
     (case method
-      ((:create-message)
+      (('create-message)
        (make-message
         id: "msg-123"
         agent-id: test-agent-id
-        role: :user
+        role: 'user
         content: "Test message"
         timestamp: (current-seconds)
-        metadata: (hash)))
+        metadata: (make-hash-table)))
       (else
        (error "Unknown method" method)))))
 
 (def (make-mock-memory-manager)
   "Create mock memory manager for testing"
-  (let ((blocks (hash)))
+  (let ((blocks (make-hash-table)))
     (lambda (method . args)
       (case method
-        ((:get-block)
+        (('get-block)
          (let ((agent-id (car args))
                (block-name (cadr args)))
            (hash-ref blocks block-name
@@ -85,7 +93,7 @@
                      template: #f
                      limit: 1000
                      metadata: (hash)))))
-        ((:update-block)
+        (('update-block)
          (let ((agent-id (car args))
                (block-name (cadr args))
                (value (caddr args)))
@@ -121,7 +129,7 @@
    step-history: '()
    current-step: 0
    start-time: (current-seconds)
-   metadata: (hash)))
+   metadata: (make-hash-table)))
 
 ;;; ============================================================================
 ;;; Callback Structure Tests
@@ -149,7 +157,7 @@
                       on-step-start: (lambda (event) (set-box! called #t))))
       (check (execution-callback? callbacks))
       ;; Test custom callback
-      (def event (make-event event-type-step-start test-agent-id (hash)))
+      (def event (make-event event-type-step-start test-agent-id (make-hash-table)))
       ((execution-callback-on-step-start callbacks) event)
       (check (unbox called)))))
 
@@ -163,7 +171,9 @@
     (test-case "Create execution event"
       (def event (make-event event-type-execution-start
                             test-agent-id
-                            (hash 'test "data")))
+                            (let ((ht (make-hash-table)))
+  (hash-put! ht 'test "data")
+  ht)))
       (check (execution-event? event))
       (check (eq? (execution-event-type event) event-type-execution-start))
       (check (equal? (execution-event-agent-id event) test-agent-id))
@@ -171,7 +181,7 @@
       (check (equal? (hash-ref (execution-event-data event) 'test) "data")))
 
     (test-case "Event has timestamp"
-      (def event (make-event event-type-step-start test-agent-id (hash)))
+      (def event (make-event event-type-step-start test-agent-id (make-hash-table)))
       (check (number? (execution-event-timestamp event)))
       (check (> (execution-event-timestamp event) 0)))
 
@@ -183,7 +193,7 @@
                       event-type-progress))
       (for-each
        (lambda (type)
-         (def event (make-event type test-agent-id (hash)))
+         (def event (make-event type test-agent-id (make-hash-table)))
          (check (eq? (execution-event-type event) type)))
        types))))
 
@@ -198,7 +208,7 @@
       (def called (box #f))
       (def callbacks (make-custom-callbacks
                       on-execution-start: (lambda (event) (set-box! called #t))))
-      (def event (make-event event-type-execution-start test-agent-id (hash)))
+      (def event (make-event event-type-execution-start test-agent-id (make-hash-table)))
       (invoke-callback callbacks event)
       (check (unbox called)))
 
@@ -206,7 +216,7 @@
       (def called (box #f))
       (def callbacks (make-custom-callbacks
                       on-step-complete: (lambda (event) (set-box! called #t))))
-      (def event (make-event event-type-step-complete test-agent-id (hash)))
+      (def event (make-event event-type-step-complete test-agent-id (make-hash-table)))
       (invoke-callback callbacks event)
       (check (unbox called)))
 
@@ -218,7 +228,11 @@
                                              (execution-event-data event)))))
       (def event (make-event event-type-progress
                             test-agent-id
-                            (hash 'current 5 'total 10 'percent 50)))
+                            (let ((ht (make-hash-table)))
+  (hash-put! ht 'current 5)
+  (hash-put! ht 'total 10)
+  (hash-put! ht 'percent 50)
+  ht)))
       (invoke-callback callbacks event)
       (check (hash-table? (unbox progress-data)))
       (check (= (hash-ref (unbox progress-data) 'percent) 50)))
@@ -231,7 +245,9 @@
                                                (hash-ref (execution-event-data event) 'error)))))
       (def event (make-event event-type-step-error
                             test-agent-id
-                            (hash 'error "Test error")))
+                            (let ((ht (make-hash-table)))
+  (hash-put! ht 'error "Test error")
+  ht)))
       (invoke-callback callbacks event)
       (check (equal? (unbox error-msg) "Test error")))))
 

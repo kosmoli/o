@@ -8,14 +8,17 @@
   :std/sugar
   :std/misc/hash
   :std/format
-  :o/database/client)
+;;
+  ;; ;; (
+  ;; :o/database/client (placeholder)) (placeholder)
+ (placeholder)
+)
 
 ;;; ============================================================================
 ;;; Message Management
 ;;; ============================================================================
 
-(def (message-create! agent-id role content
-                      #!key
+(def (message-create! agent-id role content . rest
                       (tool-calls #f)
                       (tool-call-id #f)
                       (tool-name #f)
@@ -24,21 +27,22 @@
   "Create a new message"
 
   (let* ((total-tokens (+ prompt-tokens completion-tokens))
-         (params (hash 'role role
-                       'content content
-                       'tool_calls tool-calls
-                       'tool_call_id tool-call-id
-                       'tool_name tool-name
-                       'prompt_tokens prompt-tokens
-                       'completion_tokens completion-tokens
-                       'total_tokens total-tokens))
+         (params (let ((ht (make-hash-table)))
+  (hash-put! ht 'role role)
+  (hash-put! ht 'content content)
+  (hash-put! ht 'tool_calls tool-calls)
+  (hash-put! ht 'tool_call_id tool-call-id)
+  (hash-put! ht 'tool_name tool-name)
+  (hash-put! ht 'prompt_tokens prompt-tokens)
+  (hash-put! ht 'completion_tokens completion-tokens)
+  (hash-put! ht 'total_tokens total-tokens)
+  ht))
          (message (db-create-message agent-id params)))
 
     (displayln (format "Message created: ~a (~a)" role (hash-ref message 'id)))
     message))
 
-(def (message-get-list agent-id
-                       #!key
+(def (message-get-list agent-id . rest
                        (limit 50)
                        (offset 0)
                        (role #f))
@@ -57,7 +61,7 @@
 ;;; Conversation Management
 ;;; ============================================================================
 
-(def (conversation-get agent-id #!key (limit 100))
+(def (conversation-get agent-id . rest (limit 100))
   "Get full conversation history"
   (db-get-conversation agent-id limit: limit))
 
@@ -74,7 +78,7 @@
   "Get N most recent messages"
   (message-get-list agent-id limit: n offset: 0))
 
-(def (conversation-get-by-role agent-id role #!key (limit 50))
+(def (conversation-get-by-role agent-id role . rest (limit 50))
   "Get messages filtered by role"
   (message-get-list agent-id limit: limit role: role))
 
@@ -82,13 +86,12 @@
 ;;; Message Creation Helpers
 ;;; ============================================================================
 
-(def (message-user! agent-id content #!key (tokens 0))
+(def (message-user! agent-id content . rest (tokens 0))
   "Create user message"
   (message-create! agent-id "user" content
                    prompt-tokens: tokens))
 
-(def (message-assistant! agent-id content
-                         #!key
+(def (message-assistant! agent-id content . rest
                          (tool-calls #f)
                          (prompt-tokens 0)
                          (completion-tokens 0))
@@ -125,21 +128,15 @@
 (def (conversation-get-stats agent-id)
   "Get conversation statistics"
   (let ((stats (db-get-agent-statistics agent-id)))
-    (hash
-     'total_messages (hash-ref stats 'total_messages)
-     'user_messages (hash-ref stats 'user_messages)
-     'assistant_messages (hash-ref stats 'assistant_messages)
-     'total_tokens (hash-ref stats 'total_tokens)
-     'prompt_tokens (hash-ref stats 'prompt_tokens)
-     'completion_tokens (hash-ref stats 'completion_tokens)
-     'first_message_at (hash-ref stats 'first_message_at)
-     'last_message_at (hash-ref stats 'last_message_at))))
+    (let ((ht (make-hash-table)))
+  (hash-put! ht 'total_messages (hash-ref stats 'total_messages))
+  ht)))
 
 ;;; ============================================================================
 ;;; Message Search
 ;;; ============================================================================
 
-(def (message-search agent-id query #!key (limit 10))
+(def (message-search agent-id query . rest (limit 10))
   "Search messages by content (text search)"
   ;; TODO: Implement text search in database
   ;; For now, filter in memory
@@ -164,17 +161,19 @@
 ;;; Conversation Export
 ;;; ============================================================================
 
-(def (conversation-export agent-id #!key (format 'json))
+(def (conversation-export agent-id . rest (format 'json))
   "Export conversation to specified format"
   (let ((messages (conversation-get agent-id)))
     (case format
-      ((json)
+      (('json) 
        (json-object->string
-        (hash 'agent_id agent-id
-              'messages messages
-              'exported_at (current-seconds))))
+        (let ((ht (make-hash-table)))
+  (hash-put! ht 'agent_id agent-id)
+  (hash-put! ht 'messages messages)
+  (hash-put! ht 'exported_at (current-seconds))
+  ht)))
 
-      ((text)
+      (('text) 
        (string-join
         (map (lambda (msg)
                (format "[~a] ~a: ~a"

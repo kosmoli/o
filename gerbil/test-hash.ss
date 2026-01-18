@@ -1,5 +1,5 @@
 (import :std/sugar :std/misc/hash)
 (def (test)
-  (let ((h (hash)))
+  (let ((h (make-hash-table)))
     (displayln (hash-table? h))))
 (test)

@@ -27,7 +27,7 @@
 ;;; Helper function to convert association list to hash table
 (def (list->hash lst)
   "Convert association list to hash table"
-  (let ((h (hash)))
+  (let ((h (make-hash-table)))
     (for-each (lambda (pair)
                 (hash-put! h (car pair) (cdr pair)))
               lst)
@@ -57,7 +57,7 @@
 
 (defstruct memory-block
   (id                ; Unique block identifier
-   type              ; Block type: :episodic :semantic :procedural
+   type              ; Block type: 'episodic 'semantic 'procedural
    content           ; Block content (any data)
    embedding         ; Vector embedding (for semantic search)
    importance        ; Importance score (0.0 - 1.0)
@@ -91,12 +91,12 @@
     (make-agent-memory
      (uuid->string (make-uuid))
      '()
-     (hash)
+     (make-hash-table)
      '()
      '()
-     (hash)
-     (hash)
-     (hash)
+     (make-hash-table)
+     (make-hash-table)
+     (make-hash-table)
      config
      now
      now)))
@@ -108,7 +108,7 @@
 (def (make-memory-block-instance type content
                                  importance: (importance 0.5)
                                  tags: (tags '())
-                                 metadata: (metadata (hash))
+                                 metadata: (metadata (make-hash-table))
                                  embedding: (embedding #f))
   "Create a new memory block"
   (make-memory-block
@@ -141,9 +141,11 @@
 
     ;; Log to WAL
     (elixir-wal-log! 'memory-add-short-term
-                     (hash ('memory_id (agent-memory-id memory))
-                           ('block_id (memory-block-id block))
-                           ('type (symbol->string (memory-block-type block)))))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'memory_id (agent-memory-id memory))
+  (hash-put! ht 'block_id (memory-block-id block))
+  (hash-put! ht 'type (symbol->string (memory-block-type block)))
+  ht))
 
     block))
 
@@ -168,20 +170,22 @@
 
     ;; Also add to type-specific storage
     (case (memory-block-type block)
-      ((:episodic)
+      (('episodic)
        (set! (agent-memory-episodic memory)
              (cons block (agent-memory-episodic memory))))
-      ((:semantic)
+      (('semantic)
        (hash-put! (agent-memory-semantic memory) block-id block))
-      ((:procedural)
+      (('procedural)
        (hash-put! (agent-memory-procedural memory) block-id block)))
 
     ;; Log to WAL
     (elixir-wal-log! 'memory-add-long-term
-                     (hash ('memory_id (agent-memory-id memory))
-                           ('block_id block-id)
-                           ('type (symbol->string (memory-block-type block)))
-                           ('importance (memory-block-importance block))))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'memory_id (agent-memory-id memory))
+  (hash-put! ht 'block_id block-id)
+  (hash-put! ht 'type (symbol->string (memory-block-type block)))
+  (hash-put! ht 'importance (memory-block-importance block))
+  ht))
 
     block))
 
@@ -204,21 +208,23 @@
 
       ;; Remove from type-specific storage
       (case (memory-block-type block)
-        ((:episodic)
+        (('episodic)
          (set! (agent-memory-episodic memory)
                (filter (lambda (b) (not (equal? (memory-block-id b) block-id)))
                        (agent-memory-episodic memory))))
-        ((:semantic)
+        (('semantic)
          (hash-remove! (agent-memory-semantic memory) block-id))
-        ((:procedural)
+        (('procedural)
          (hash-remove! (agent-memory-procedural memory) block-id)))
 
       (set! (agent-memory-updated-at memory) (time->seconds (current-time)))
 
       ;; Log to WAL
       (elixir-wal-log! 'memory-remove-long-term
-                       (hash ('memory_id (agent-memory-id memory))
-                             ('block_id block-id))))))
+                       (let ((ht (make-hash-table)))
+  (hash-put! ht 'memory_id (agent-memory-id memory))
+  (hash-put! ht 'block_id block-id)
+  ht)))))
 
 ;;; ============================================================================
 ;;; Working Memory Operations
@@ -273,9 +279,11 @@
 
     ;; Log consolidation
     (elixir-wal-log! 'memory-consolidation
-                     (hash ('memory_id (agent-memory-id memory))
-                           ('num_consolidated (length important-blocks))
-                           ('timestamp (time->seconds (current-time)))))
+                     (let ((ht (make-hash-table)))
+  (hash-put! ht 'memory_id (agent-memory-id memory))
+  (hash-put! ht 'num_consolidated (length important-blocks))
+  (hash-put! ht 'timestamp (time->seconds (current-time)))
+  ht))
 
     (displayln (format "Consolidated ~a blocks to long-term memory"
                       (length important-blocks)))
@@ -528,15 +536,17 @@
 
 ;; Create memory blocks
 (def block1 (make-memory-block-instance
-             :episodic
+             'episodic
              "User asked about weather"
              importance: 0.7
              tags: '(weather user-query)))
 
 (def block2 (make-memory-block-instance
-             :semantic
-             (hash 'fact "Paris is the capital of France"
-                   'confidence 1.0)
+             'semantic
+             (let ((ht (make-hash-table)))
+  (hash-put! ht 'fact "Paris is the capital of France")
+  (hash-put! ht 'confidence 1.0)
+  ht)
              importance: 0.9
              tags: '(geography fact)))
 

@@ -23,7 +23,7 @@
 (def (setup-test-manager)
   "Create test archival manager with sample entries"
   (let ((manager (make-archival-manager test-agent-id
-                                       llm-provider: :openai
+                                       llm-provider: 'openai
                                        llm-model: "text-embedding-3-small"
                                        cache-enabled: #t)))
     ;; Insert sample entries with embeddings

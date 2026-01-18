@@ -19,11 +19,12 @@
 ;;; ============================================================================
 
 (def *default-models*
-  (hash
-   :openai "gpt-4"
-   :anthropic "claude-3-5-sonnet-20241022"
-   :groq "llama-3.3-70b-versatile"
-   :ollama "llama3.2:latest"))
+  (let ((ht (make-hash-table)))
+    (hash-put! ht 'openai "gpt-4")
+    (hash-put! ht 'anthropic "claude-3-5-sonnet-20241022")
+    (hash-put! ht 'groq "llama-3.3-70b-versatile")
+    (hash-put! ht 'ollama "llama3.2:latest")
+    ht))
 
 (def (get-default-model provider)
   "Get default model for a provider"
@@ -35,8 +36,7 @@
 
 (def (llm-chat-completion
       provider
-      messages
-      #!key
+      messages . rest
       (model #f)
       (api-key #f)
       (temperature 0.7)
@@ -48,7 +48,7 @@
   "Unified chat completion interface for all providers
 
    Parameters:
-   - provider: :openai :anthropic :groq :ollama
+   - provider: 'openai 'anthropic 'groq 'ollama
    - messages: list of llm-message structures or hashes
    - model: model name (uses default if not specified)
    - api-key: API key (uses env var if not specified)
@@ -65,7 +65,7 @@
 
     (case provider
       ;; OpenAI
-      ((:openai)
+      (('openai)
        (let ((msgs (if system
                        (cons (make-system-message system) messages)
                        messages)))
@@ -79,7 +79,7 @@
           tool-choice: tool-choice)))
 
       ;; Anthropic
-      ((:anthropic)
+      (('anthropic)
        (anthropic-messages
         messages
         model: model-name
@@ -90,7 +90,7 @@
         tools: tools))
 
       ;; Groq
-      ((:groq)
+      (('groq)
        (let ((msgs (if system
                        (cons (make-system-message system) messages)
                        messages)))
@@ -104,7 +104,7 @@
           tool-choice: tool-choice)))
 
       ;; Ollama
-      ((:ollama)
+      (('ollama)
        (let ((msgs (if system
                        (cons (make-system-message system) messages)
                        messages)))
@@ -126,8 +126,7 @@
 
 (def (llm-simple
       provider
-      prompt
-      #!key
+      prompt . rest
       (model #f)
       (system-prompt "You are a helpful assistant.")
       (api-key #f)
@@ -135,7 +134,7 @@
   "Simple chat interface for all providers
 
    Parameters:
-   - provider: :openai :anthropic :groq :ollama
+   - provider: 'openai 'anthropic 'groq 'ollama
    - prompt: user prompt string
    - model: model name (uses default if not specified)
    - system-prompt: system prompt
@@ -147,28 +146,28 @@
   (let ((messages (list (make-user-message prompt))))
 
     (case provider
-      ((:openai)
+      (('openai)
        (openai-simple prompt
-                      model: (or model (get-default-model :openai))
+                      model: (or model (get-default-model 'openai))
                       system-prompt: system-prompt
                       api-key: api-key))
 
-      ((:anthropic)
+      (('anthropic)
        (anthropic-simple prompt
-                         model: (or model (get-default-model :anthropic))
+                         model: (or model (get-default-model 'anthropic))
                          system-prompt: system-prompt
                          max-tokens: 4096
                          api-key: api-key))
 
-      ((:groq)
+      (('groq)
        (groq-simple prompt
-                    model: (or model (get-default-model :groq))
+                    model: (or model (get-default-model 'groq))
                     system-prompt: system-prompt
                     api-key: api-key))
 
-      ((:ollama)
+      (('ollama)
        (ollama-simple prompt
-                      model: (or model (get-default-model :ollama))
+                      model: (or model (get-default-model 'ollama))
                       system-prompt: system-prompt
                       endpoint: (or endpoint "http://localhost:11434")))
 
@@ -182,8 +181,7 @@
 (def (llm-with-tools
       provider
       prompt
-      tools
-      #!key
+      tools . rest
       (model #f)
       (system-prompt "You are a helpful assistant.")
       (api-key #f)
@@ -191,7 +189,7 @@
   "Tool-enabled chat interface for all providers
 
    Parameters:
-   - provider: :openai :anthropic :groq :ollama
+   - provider: 'openai 'anthropic 'groq 'ollama
    - prompt: user prompt string
    - tools: list of tool-definition structures
    - model: model name (uses default if not specified)
@@ -202,28 +200,28 @@
    Returns: llm-response structure (check for tool calls)"
 
   (case provider
-    ((:openai)
+    (('openai)
      (openai-with-tools prompt tools
-                        model: (or model (get-default-model :openai))
+                        model: (or model (get-default-model 'openai))
                         system-prompt: system-prompt
                         api-key: api-key))
 
-    ((:anthropic)
+    (('anthropic)
      (anthropic-with-tools prompt tools
-                           model: (or model (get-default-model :anthropic))
+                           model: (or model (get-default-model 'anthropic))
                            system-prompt: system-prompt
                            max-tokens: 4096
                            api-key: api-key))
 
-    ((:groq)
+    (('groq)
      (groq-with-tools prompt tools
-                      model: (or model (get-default-model :groq))
+                      model: (or model (get-default-model 'groq))
                       system-prompt: system-prompt
                       api-key: api-key))
 
-    ((:ollama)
+    (('ollama)
      (ollama-with-tools prompt tools
-                        model: (or model (get-default-model :ollama))
+                        model: (or model (get-default-model 'ollama))
                         system-prompt: system-prompt
                         endpoint: (or endpoint "http://localhost:11434")))
 
@@ -235,7 +233,7 @@
 ;;; ============================================================================
 
 (defstruct llm-config
-  (provider      ; :openai :anthropic :groq :ollama
+  (provider      ; 'openai 'anthropic 'groq 'ollama
    model         ; model name
    api-key       ; API key (optional)
    temperature   ; sampling temperature
@@ -244,8 +242,7 @@
   transparent: #t)
 
 (def (make-llm-config-instance
-      provider
-      #!key
+      provider . rest
       (model #f)
       (api-key #f)
       (temperature 0.7)
@@ -262,8 +259,7 @@
 
 (def (llm-chat-with-config
       config
-      messages
-      #!key
+      messages . rest
       (system #f)
       (tools #f)
       (tool-choice #f))
@@ -296,19 +292,19 @@
 
 (def (provider-supports-tools? provider)
   "Check if provider supports tool calling"
-  (member provider '(:openai :anthropic :groq :ollama)))
+  (member provider '('openai 'anthropic 'groq 'ollama)))
 
 (def (provider-requires-max-tokens? provider)
   "Check if provider requires max-tokens parameter"
-  (eq? provider :anthropic))
+  (eq? provider 'anthropic))
 
 (def (provider-supports-streaming? provider)
   "Check if provider supports streaming responses"
-  (member provider '(:openai :anthropic :groq :ollama)))
+  (member provider '('openai 'anthropic 'groq 'ollama)))
 
 (def (validate-provider provider)
   "Validate provider name"
-  (unless (member provider '(:openai :anthropic :groq :ollama))
+  (unless (member provider '('openai 'anthropic 'groq 'ollama))
     (error "Invalid provider" provider)))
 
 ;;; ============================================================================
@@ -317,14 +313,14 @@
 
 #|
 ;; Simple usage with different providers
-(def response1 (llm-simple :openai "Why is the sky blue?"))
-(def response2 (llm-simple :anthropic "Why is the sky blue?"))
-(def response3 (llm-simple :groq "Why is the sky blue?"))
-(def response4 (llm-simple :ollama "Why is the sky blue?"))
+(def response1 (llm-simple 'openai "Why is the sky blue?"))
+(def response2 (llm-simple 'anthropic "Why is the sky blue?"))
+(def response3 (llm-simple 'groq "Why is the sky blue?"))
+(def response4 (llm-simple 'ollama "Why is the sky blue?"))
 
 ;; Using configuration object
 (def config (make-llm-config-instance
-             :openai
+             'openai
              model: "gpt-4"
              temperature: 0.5))
 
@@ -336,16 +332,16 @@
   (make-tool-definition-instance
    "calculate"
    "Perform a mathematical calculation"
-   (hash
-    'type "object"
-    'properties (hash
+   (let ((ht (make-hash-table)))
+  (hash-put! ht 'type "object")
+  (hash-put! ht 'properties (hash
                  'expression (hash
                               'type "string"
-                              'description "Mathematical expression to evaluate"))
-    'required '("expression"))))
+                              'description "Mathematical expression to evaluate")))
+  ht)))
 
 (def response (llm-with-tools
-               :openai
+               'openai
                "What is 25 * 4?"
                (list calculator-tool)))
 
