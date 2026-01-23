@@ -1,0 +1,1 @@
+("9.0" ta6le ("0bd8afcf468c36c6bb346f854b331208ab166296" . "54dda52986d1b26118ecaa5b1752df66a29ca123") #"/root/work/o/racket/o/agent/../elixir-bridge.rkt" (collects #"racket" #"date.rkt") (collects #"racket" #"format.rkt") (collects #"racket" #"hash.rkt") (collects #"racket" #"list.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))

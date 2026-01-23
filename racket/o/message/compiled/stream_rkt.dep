@@ -1,0 +1,1 @@
+("9.0" ta6le ("6a166c9b095cdef7944e8874c6f382314662939f" . "ed34649fbe1fe5c9a757bf7975d1ae0dd60e2d50") #"/root/work/o/racket/o/message/./manager.rkt" #"/root/work/o/racket/o/message/./types.rkt" (collects #"json" #"main.rkt") (collects #"racket" #"format.rkt") (collects #"racket" #"hash.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))

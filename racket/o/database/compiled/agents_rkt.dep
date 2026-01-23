@@ -1,0 +1,1 @@
+("9.0" ta6le ("68cea8130ad808ddf783d5ecb8da4a92f7969336" . "de22363293771cc41e8fa00fe37c30661b54c42c") #"/root/work/o/racket/o/database/./client.rkt" (collects #"racket" #"format.rkt") (collects #"racket" #"hash.rkt") (collects #"racket" #"list.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))
