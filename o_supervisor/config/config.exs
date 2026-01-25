@@ -1,8 +1,8 @@
 import Config
 
 config :o_supervisor,
-  gerbil_executable: System.get_env("GERBIL_EXECUTABLE") || "gerbil",
-  gerbil_main_script: "../gerbil/main.ss",
+  racket_executable: System.get_env("RACKET_EXECUTABLE") || "racket",
+  racket_main_script: "../racket/o/main.rkt",
   checkpoint_dir: "data/checkpoints",
   wal_dir: "data/wal",
   shared_memory_name: "/o_shared_state",
@@ -16,6 +16,6 @@ config :o_supervisor,
 config :logger,
   level: :info,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :module, :function]
+  metadata: [request_id: :request_id, module: :module, function: :function]
 
 import_config "#{config_env()}.exs"

@@ -29,8 +29,16 @@ defmodule OSupervisor.WALManager do
     GenServer.cast(__MODULE__, {:append, entry})
   end
 
+  def append_entry_sync(entry) do
+    GenServer.call(__MODULE__, {:append, entry})
+  end
+
   def append_batch(entries) do
     GenServer.cast(__MODULE__, {:append_batch, entries})
+  end
+
+  def append_batch_sync(entries) do
+    GenServer.call(__MODULE__, {:append_batch, entries})
   end
 
   def replay_from_checkpoint(checkpoint_id) do
@@ -71,6 +79,18 @@ defmodule OSupervisor.WALManager do
   def handle_cast({:append_batch, entries}, state) do
     new_state = Enum.reduce(entries, state, &write_entry/2)
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_call({:append, entry}, _from, state) do
+    new_state = write_entry(entry, state)
+    {:reply, :ok, new_state}
+  end
+
+  @impl true
+  def handle_call({:append_batch, entries}, _from, state) do
+    new_state = Enum.reduce(entries, state, &write_entry/2)
+    {:reply, :ok, new_state}
   end
 
   @impl true

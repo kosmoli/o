@@ -2,7 +2,7 @@ defmodule OSupervisor.TrafficSplitter do
   @moduledoc """
   Routes traffic between main and shadow instances for A/B testing.
   """
-  
+
   use GenServer
   require Logger
 
@@ -37,7 +37,7 @@ defmodule OSupervisor.TrafficSplitter do
   @impl true
   def init(_) do
     {:ok, %__MODULE__{
-      main_pid: :main_gerbil,
+      main_pid: :main_racket,
       shadow_pid: nil,
       split_ratio: 0.0,
       request_count: 0,
@@ -60,8 +60,8 @@ defmodule OSupervisor.TrafficSplitter do
   @impl true
   def handle_call({:route, request}, _from, state) do
     new_count = state.request_count + 1
-    
-    {response, new_shadow_count} = 
+
+    {response, new_shadow_count} =
       if state.shadow_pid && :rand.uniform() < state.split_ratio do
         # Send to both (shadow for testing, main for actual response)
         {main_response, shadow_response} = send_to_both(
@@ -69,18 +69,18 @@ defmodule OSupervisor.TrafficSplitter do
           state.shadow_pid,
           request
         )
-        
+
         # Record comparison
         record_comparison(main_response, shadow_response)
-        
+
         {main_response, state.shadow_count + 1}
       else
         # Send only to main
         response = send_to_instance(state.main_pid, request)
         {response, state.shadow_count}
       end
-    
-    {:reply, response, %{state | 
+
+    {:reply, response, %{state |
       request_count: new_count,
       shadow_count: new_shadow_count
     }}
@@ -94,29 +94,29 @@ defmodule OSupervisor.TrafficSplitter do
       {time, response} = :timer.tc(fn -> send_to_instance(main_pid, request) end)
       {response, time}
     end)
-    
+
     shadow_task = Task.async(fn ->
       {time, response} = :timer.tc(fn -> send_to_instance(shadow_pid, request) end)
       {response, time}
     end)
-    
+
     {main_response, main_time} = Task.await(main_task, 30_000)
     {shadow_response, shadow_time} = Task.await(shadow_task, 30_000)
-    
+
     {{main_response, main_time}, {shadow_response, shadow_time}}
   end
 
   defp send_to_instance(pid, request) do
     message = %{
-      type: "process_request",
-      data: request,
-      timestamp: System.system_time(:millisecond)
+      "type" => "process_request",
+      "data" => request,
+      "timestamp" => System.system_time(:millisecond)
     }
-    
-    OSupervisor.GerbilManager.send_message(pid, message)
+
+    OSupervisor.RacketManager.send_message(pid, message)
   end
 
-  defp record_comparison({main_response, main_time}, {shadow_response, shadow_time}) do
+  defp record_comparison({_main_response, main_time}, {_shadow_response, shadow_time}) do
     # Record metrics for comparison
     :telemetry.execute(
       [:o_supervisor, :traffic_splitter, :comparison],
